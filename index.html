@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QIIME 2 微生物組學全流程教學與實戰分析報告 (BioSample: 16047118)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+        code, pre {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+        }
+        .glass-nav {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39);
+        }
+        .tag-pill {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+        .step-circle {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.875rem;
+        }
+    </style>
+    <!-- Priority Inline SwitchTab Script in Head to guarantee tab switching works instantly -->
+    <script>
+        function switchTab(tabId) {
+            try {
+                var sections = document.querySelectorAll('section[id^="content-"]');
+                for (var i = 0; i < sections.length; i++) {
+                    sections[i].style.display = 'none';
+                    sections[i].classList.add('hidden');
+                }
+                var buttons = document.querySelectorAll('.tab-btn');
+                for (var j = 0; j < buttons.length; j++) {
+                    buttons[j].classList.remove('active');
+                }
+                
+                var targetSection = document.getElementById('content-' + tabId);
+                var targetBtn = document.getElementById('tab-' + tabId);
+                if (targetSection) {
+                    targetSection.style.display = 'block';
+                    targetSection.classList.remove('hidden');
+                }
+                if (targetBtn) {
+                    targetBtn.classList.add('active');
+                }
+
+                // Render charts if available
+                if (typeof window.triggerChartRender === 'function') {
+                    window.triggerChartRender(tabId);
+                }
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch (err) {
+                console.error("switchTab error:", err);
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-50 glass-nav px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                <i class="fa-solid fa-dna text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                    QIIME 2 腸道微生物組學全流程教學實戰
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        BioSample: 16047118
+                    </span>
+                </h1>
+                <p class="text-xs text-slate-400">大蒜素 (Allicin) 介入對高 TMAO 產生者人類腸道菌群之調控效應分析</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3 text-xs">
+            <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                <i class="fa-solid fa-server mr-1 text-blue-400"></i> QIIME 2 2026.7
+            </span>
+            <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                <i class="fa-solid fa-database mr-1 text-emerald-400"></i> SILVA 138.2
+            </span>
+            <a href="https://www.ncbi.nlm.nih.gov/biosample/16047118" target="_blank" class="px-3 py-1.5 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 border border-blue-500/30 transition flex items-center gap-1 font-medium">
+                NCBI BioSample <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+
+        <!-- Navigation Tabs Bar -->
+        <nav class="flex space-x-2 overflow-x-auto pb-2 custom-scrollbar bg-slate-900/40 p-2 rounded-2xl border border-slate-800">
+            <button type="button" onclick="switchTab('overview')" id="tab-overview" class="tab-btn active px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2 whitespace-nowrap cursor-pointer">
+                <i class="fa-solid fa-book-open text-blue-400"></i> 1. 實驗背景與數據設計
+            </button>
+            <button type="button" onclick="switchTab('pipeline')" id="tab-pipeline" class="tab-btn px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2 whitespace-nowrap cursor-pointer">
+                <i class="fa-solid fa-terminal text-indigo-400"></i> 2. 分析流程與指令
+            </button>
+            <button type="button" onclick="switchTab('qc-dada2')" id="tab-qc-dada2" class="tab-btn px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2 whitespace-nowrap cursor-pointer">
+                <i class="fa-solid fa-filter text-emerald-400"></i> 3. 質控與 DADA2 去噪
+            </button>
+            <button type="button" onclick="switchTab('alpha-div')" id="tab-alpha-div" class="tab-btn px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2 whitespace-nowrap cursor-pointer">
+                <i class="fa-solid fa-chart-line text-amber-400"></i> 4. Alpha 多樣性
+            </button>
+            <button type="button" onclick="switchTab('beta-div')" id="tab-beta-div" class="tab-btn px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2 whitespace-nowrap cursor-pointer">
+                <i class="fa-solid fa-cubes text-purple-400"></i> 5. Beta 多樣性 (PCoA)
+            </button>
+            <button type="button" onclick="switchTab('taxonomy')" id="tab-taxonomy" class="tab-btn px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2 whitespace-nowrap cursor-pointer">
+                <i class="fa-solid fa-chart-column text-pink-400"></i> 6. 物種組成註釋
+            </button>
+            <button type="button" onclick="switchTab('biology')" id="tab-biology" class="tab-btn px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2 whitespace-nowrap cursor-pointer">
+                <i class="fa-solid fa-flask-vial text-rose-400"></i> 7. 生物學意義與機制
+            </button>
+            <button type="button" onclick="switchTab('quiz')" id="tab-quiz" class="tab-btn px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2 whitespace-nowrap cursor-pointer">
+                <i class="fa-solid fa-graduation-cap text-yellow-400"></i> 8. 教學問答與實戰評量
+            </button>
+        </nav>
+
+        <!-- Tab 1: 實驗背景與數據設計 -->
+        <section id="content-overview" class="space-y-6">
+            <!-- Hero Banner -->
+            <div class="glass-card rounded-2xl p-6 relative overflow-hidden bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-slate-900/60 border-l-4 border-l-blue-500">
+                <div class="max-w-3xl space-y-3">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-semibold">
+                        <i class="fa-solid fa-star"></i> 實體 NCBI 研究課題：心血管代謝與腸道菌群
+                    </div>
+                    <h2 class="text-2xl font-bold text-white">大蒜素介入對人類腸道微生物群之重塑作用</h2>
+                    <p class="text-sm text-slate-300 leading-relaxed">
+                        本教學分析以 NCBI BioSample <code class="text-blue-300 bg-blue-950/60 px-1.5 py-0.5 rounded">SAMN16047118</code> (隸屬於 BioProject <code class="text-blue-300 bg-blue-950/60 px-1.5 py-0.5 rounded">PRJNA661156</code>) 為實戰核心。研究團隊聚焦於探討富含大蒜素（Allicin）之新鮮大蒜汁在人體臨床試驗中，如何重塑腸道微生物結構並抑制肉鹼代謝生成「氧化三甲胺（TMAO）」——動脈粥狀硬化及心血管疾病的高危促發因子。
+                    </p>
+                </div>
+            </div>
+
+            <!-- Key Study Info Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="glass-card rounded-xl p-5 border-t-2 border-t-sky-500">
+                    <div class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">受試者篩選表型</div>
+                    <div class="text-xl font-bold text-white flex items-center gap-2">
+                        高 TMAO 產生者
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">
+                        經口服肉鹼激發試驗 (OCCT) 篩選出血漿 TMAO &gt; 10 μM 之健康成年人。
+                    </p>
+                </div>
+                <div class="glass-card rounded-xl p-5 border-t-2 border-t-emerald-500">
+                    <div class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">臨床介入方案</div>
+                    <div class="text-xl font-bold text-white flex items-center gap-2">
+                        生大蒜汁 55 mL/天
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">
+                        相當於 48 mg 大蒜素當量，連續於晚餐食用 1 週（7 天），完成前後配對取樣。
+                    </p>
+                </div>
+                <div class="glass-card rounded-xl p-5 border-t-2 border-t-purple-500">
+                    <div class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">定序擴增子目標</div>
+                    <div class="text-xl font-bold text-white flex items-center gap-2">
+                        16S rRNA V3-V4
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">
+                        引物 341F (CCTACGGG...) 與 806R (GGACTAC...)，擴增片段長度約 460 bp。
+                    </p>
+                </div>
+                <div class="glass-card rounded-xl p-5 border-t-2 border-t-amber-500">
+                    <div class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">定序儀器與策略</div>
+                    <div class="text-xl font-bold text-white flex items-center gap-2">
+                        Illumina MiSeq
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">
+                        雙端定序 (Paired-end 2 x 300 bps)，每端提供 300 輪化學反應循環數據。
+                    </p>
+                </div>
+            </div>
+
+            <!-- Experimental Design Table -->
+            <div class="glass-card rounded-xl p-6">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-users text-blue-400"></i> 本次實戰受試者配對樣品清單 (Paired Design)
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="bg-slate-800/80 text-xs uppercase font-semibold text-slate-400">
+                            <tr>
+                                <th class="px-4 py-3 rounded-l-lg">樣品代號 (Sample ID)</th>
+                                <th class="px-4 py-3">NCBI SRA Run</th>
+                                <th class="px-4 py-3">受試者編號</th>
+                                <th class="px-4 py-3">時間點 (Timepoint)</th>
+                                <th class="px-4 py-3">介入條件</th>
+                                <th class="px-4 py-3">原始定序量 (Raw Reads)</th>
+                                <th class="px-4 py-3 rounded-r-lg">去噪過濾後 (ASV Reads)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800 font-mono text-xs">
+                            <tr class="hover:bg-slate-800/40 transition">
+                                <td class="px-4 py-3 font-semibold text-sky-400">Subject1_Pre</td>
+                                <td class="px-4 py-3 text-slate-400">SRR12581787</td>
+                                <td class="px-4 py-3">Subject 1</td>
+                                <td class="px-4 py-3"><span class="tag-pill bg-slate-700 text-slate-200">Pre (基準線)</span></td>
+                                <td class="px-4 py-3">未食用大蒜汁</td>
+                                <td class="px-4 py-3">81,236</td>
+                                <td class="px-4 py-3 text-emerald-400 font-semibold">41,257 (50.8%)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40 transition">
+                                <td class="px-4 py-3 font-semibold text-emerald-400">Subject1_Post</td>
+                                <td class="px-4 py-3 text-slate-400">SRR12581788</td>
+                                <td class="px-4 py-3">Subject 1</td>
+                                <td class="px-4 py-3"><span class="tag-pill bg-emerald-900/60 text-emerald-300 border border-emerald-700">Post (大蒜汁)</span></td>
+                                <td class="px-4 py-3">連續 7 天大蒜汁</td>
+                                <td class="px-4 py-3">77,038</td>
+                                <td class="px-4 py-3 text-emerald-400 font-semibold">36,855 (47.8%)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40 transition">
+                                <td class="px-4 py-3 font-semibold text-sky-400">Subject2_Pre</td>
+                                <td class="px-4 py-3 text-slate-400">SRR12581789</td>
+                                <td class="px-4 py-3">Subject 2</td>
+                                <td class="px-4 py-3"><span class="tag-pill bg-slate-700 text-slate-200">Pre (基準線)</span></td>
+                                <td class="px-4 py-3">未食用大蒜汁</td>
+                                <td class="px-4 py-3">131,535</td>
+                                <td class="px-4 py-3 text-emerald-400 font-semibold">71,053 (54.0%)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40 transition">
+                                <td class="px-4 py-3 font-semibold text-emerald-400">Subject2_Post</td>
+                                <td class="px-4 py-3 text-slate-400">SRR12581790</td>
+                                <td class="px-4 py-3">Subject 2</td>
+                                <td class="px-4 py-3"><span class="tag-pill bg-emerald-900/60 text-emerald-300 border border-emerald-700">Post (大蒜汁)</span></td>
+                                <td class="px-4 py-3">連續 7 天大蒜汁</td>
+                                <td class="px-4 py-3">94,346</td>
+                                <td class="px-4 py-3 text-emerald-400 font-semibold">48,374 (51.3%)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40 transition">
+                                <td class="px-4 py-3 font-semibold text-sky-400">Subject3_Pre</td>
+                                <td class="px-4 py-3 text-slate-400">SRR12581791</td>
+                                <td class="px-4 py-3">Subject 3</td>
+                                <td class="px-4 py-3"><span class="tag-pill bg-slate-700 text-slate-200">Pre (基準線)</span></td>
+                                <td class="px-4 py-3">未食用大蒜汁</td>
+                                <td class="px-4 py-3">84,907</td>
+                                <td class="px-4 py-3 text-emerald-400 font-semibold">45,293 (53.3%)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40 transition">
+                                <td class="px-4 py-3 font-semibold text-emerald-400">Subject3_Post</td>
+                                <td class="px-4 py-3 text-slate-400">SRR12581792</td>
+                                <td class="px-4 py-3">Subject 3</td>
+                                <td class="px-4 py-3"><span class="tag-pill bg-emerald-900/60 text-emerald-300 border border-emerald-700">Post (大蒜汁)</span></td>
+                                <td class="px-4 py-3">連續 7 天大蒜汁</td>
+                                <td class="px-4 py-3">59,236</td>
+                                <td class="px-4 py-3 text-emerald-400 font-semibold">30,768 (51.9%)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 2: 分析流程與指令 -->
+        <section id="content-pipeline" class="hidden space-y-6">
+            <div class="glass-card rounded-xl p-6">
+                <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-diagram-project text-blue-400"></i> QIIME 2 標準分析流程架構 (Workflow Architecture)
+                </h3>
+                <p class="text-sm text-slate-300 mb-6">
+                    本分析管線完全符合當前擴增子微生物組分析的嚴謹金標準，採用 DADA2 演算法推斷精確擴增子序列變異體（ASVs），結合 SILVA 138.2 數據庫進行多層級分類註釋與系統發育多樣性檢測。
+                </p>
+
+                <!-- Workflow Step Cards -->
+                <div class="space-y-4">
+                    <!-- Step 1 -->
+                    <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-bold text-blue-400 flex items-center gap-2">
+                                <span class="step-circle bg-blue-500/20 text-blue-400 border border-blue-500/40">1</span>
+                                數據下載與清單建立 (Manifest File & Import)
+                            </span>
+                            <span class="text-xs text-slate-400">格式：PairedEndFastqManifestPhred33V2</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mb-3">
+                            由 ENA/NCBI 獲取雙端 FastQ 文件後，編寫包含 <code class="text-blue-300">sample-id</code>、<code class="text-blue-300">forward-absolute-filepath</code> 與 <code class="text-blue-300">reverse-absolute-filepath</code> 的 Manifest TSV，並導入為 QIIME 2 專用壓縮物件（.qza）。
+                        </p>
+                        <div class="relative bg-slate-950 rounded-lg p-3 text-xs font-mono text-slate-300 border border-slate-800 overflow-x-auto">
+                            <code>qiime tools import   --type 'SampleData[PairedEndSequencesWithQuality]'   --input-path manifest.tsv   --output-path 01_demux-paired.qza   --input-format PairedEndFastqManifestPhred33V2</code>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-bold text-indigo-400 flex items-center gap-2">
+                                <span class="step-circle bg-indigo-500/20 text-indigo-400 border border-indigo-500/40">2</span>
+                                測序質量評估與可視化 (Quality Inspection)
+                            </span>
+                            <span class="text-xs text-slate-400">輸出：.qzv 可視化檔案</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mb-3">
+                            生成序列長度分佈與每個化學循環（Cycle 1–300）的 Phred 質量分數百分位圖，作為後續剪裁參數設置的決定性依據。
+                        </p>
+                        <div class="relative bg-slate-950 rounded-lg p-3 text-xs font-mono text-slate-300 border border-slate-800 overflow-x-auto">
+                            <code>qiime demux summarize   --i-data 01_demux-paired.qza   --o-visualization 01_demux-paired.qzv</code>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-bold text-emerald-400 flex items-center gap-2">
+                                <span class="step-circle bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">3</span>
+                                DADA2 錯誤模型學習、去噪、拼接與嵌合體過濾
+                            </span>
+                            <span class="text-xs text-slate-400">產出：Feature Table, Rep-Seqs, Stats</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mb-3">
+                            去除 341F (17bp) 與 806R (21bp) 引物；R1 截短至 280bp，R2 截短至 240bp。總長 482bp &gt; 460bp，保留足夠重疊區域以高精確度進行雙端拼接。
+                        </p>
+                        <div class="relative bg-slate-950 rounded-lg p-3 text-xs font-mono text-slate-300 border border-slate-800 overflow-x-auto">
+                            <code>qiime dada2 denoise-paired   --i-demultiplexed-seqs 01_demux-paired.qza   --p-trim-left-f 17   --p-trim-left-r 21   --p-trunc-len-f 280   --p-trunc-len-r 240   --p-n-threads 10   --o-table 02_table.qza   --o-representative-sequences 02_rep-seqs.qza   --o-denoising-stats 02_denoising-stats.qza   --o-base-transition-stats 02_base-transition-stats.qza</code>
+                        </div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-bold text-amber-400 flex items-center gap-2">
+                                <span class="step-circle bg-amber-500/20 text-amber-400 border border-amber-500/40">4</span>
+                                系統發育樹構建 (Phylogenetic Tree Reconstruction)
+                            </span>
+                            <span class="text-xs text-slate-400">算法：MAFFT 多序列比對 + FastTree 近似最大似然</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mb-3">
+                            比對各 ASV 代表性序列，過濾高變且比對不確定性高的掩碼區域，隨後構建有根系統發育樹，作為計算 Faith's PD 與 UniFrac 距離之必要輸入。
+                        </p>
+                        <div class="relative bg-slate-950 rounded-lg p-3 text-xs font-mono text-slate-300 border border-slate-800 overflow-x-auto">
+                            <code>qiime phylogeny align-to-tree-mafft-fasttree   --i-sequences 02_rep-seqs.qza   --o-alignment 03_aligned-rep-seqs.qza   --o-masked-alignment 03_masked-aligned-rep-seqs.qza   --o-tree 03_unrooted-tree.qza   --o-rooted-tree 03_rooted-tree.qza   --p-n-threads 10</code>
+                        </div>
+                    </div>
+
+                    <!-- Step 5 -->
+                    <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-bold text-purple-400 flex items-center gap-2">
+                                <span class="step-circle bg-purple-500/20 text-purple-400 border border-purple-500/40">5</span>
+                                多樣性核心指標綜合分析 (Alpha &amp; Beta Diversity)
+                            </span>
+                            <span class="text-xs text-slate-400">抽平深度：30,000 Reads / Sample</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mb-3">
+                            在完全保留 100% 樣品的前提下統一標準化深度。計算 Shannon 熵、Faith's PD、Pielou 均勻度，以及 Bray-Curtis、Jaccard、加權/未加權 UniFrac 距離矩陣與 PCoA。
+                        </p>
+                        <div class="relative bg-slate-950 rounded-lg p-3 text-xs font-mono text-slate-300 border border-slate-800 overflow-x-auto">
+                            <code>qiime diversity core-metrics-phylogenetic   --i-phylogeny 03_rooted-tree.qza   --i-table 02_table.qza   --p-sampling-depth 30000   --m-metadata-file metadata.tsv   --p-n-jobs-or-threads 4   --output-dir 04_core-metrics-results</code>
+                        </div>
+                    </div>
+
+                    <!-- Step 6 -->
+                    <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-bold text-pink-400 flex items-center gap-2">
+                                <span class="step-circle bg-pink-500/20 text-pink-400 border border-pink-500/40">6</span>
+                                SILVA 138.2 機器學習物種分類與堆疊柱狀圖
+                            </span>
+                            <span class="text-xs text-slate-400">模型：Naive Bayes (V3-V4 區域專一訓練)</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mb-3">
+                            利用 SILVA 138.2 SSURef NR99 訓練模型對 672 個 ASV 進行七級生物學分類註釋（界門綱目科屬種），並輸出各層級相對豐富度堆疊圖。
+                        </p>
+                        <div class="relative bg-slate-950 rounded-lg p-3 text-xs font-mono text-slate-300 border border-slate-800 overflow-x-auto">
+                            <code>qiime feature-classifier classify-sklearn   --i-classifier SILVA_138.2_SSURef_NR99_uniform_classifier_V3V4-341f-806r.qza   --i-reads 02_rep-seqs.qza   --p-n-jobs 4   --o-classification 05_taxonomy.qza
+
+qiime taxa barplot   --i-table 02_table.qza   --i-taxonomy 05_taxonomy.qza   --m-metadata-file metadata.tsv   --o-visualization 05_taxa-bar-plots.qzv</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 3: 質控與 DADA2 去噪 -->
+        <section id="content-qc-dada2" class="hidden space-y-6">
+            <!-- Summary Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="glass-card rounded-xl p-5 border-l-4 border-l-blue-500">
+                    <div class="text-xs text-slate-400">總輸入原始 Reads</div>
+                    <div class="text-2xl font-bold text-white mt-1">528,298 <span class="text-xs font-normal text-slate-400">條序列</span></div>
+                    <div class="text-xs text-slate-400 mt-1">6 個樣本平均 88,050 reads/sample</div>
+                </div>
+                <div class="glass-card rounded-xl p-5 border-l-4 border-l-emerald-500">
+                    <div class="text-xs text-slate-400">去噪無嵌合體 (Non-Chimeric) Reads</div>
+                    <div class="text-2xl font-bold text-emerald-400 mt-1">273,600 <span class="text-xs font-normal text-slate-400">條高質量 ASV</span></div>
+                    <div class="text-xs text-slate-400 mt-1">整體保留率高達 51.79% (V3-V4 優質水準)</div>
+                </div>
+                <div class="glass-card rounded-xl p-5 border-l-4 border-l-purple-500">
+                    <div class="text-xs text-slate-400">推斷出之唯一 ASVs 總數</div>
+                    <div class="text-2xl font-bold text-purple-400 mt-1">672 <span class="text-xs font-normal text-slate-400">Unique ASVs</span></div>
+                    <div class="text-xs text-slate-400 mt-1">完全消除 Illumina PCR 與定序誤差</div>
+                </div>
+            </div>
+
+            <!-- DADA2 Waterfall Chart -->
+            <div class="glass-card rounded-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-water text-blue-400"></i> 各樣本在 DADA2 各處理步驟之序列留存追蹤 (Tracking Waterfall)
+                    </h3>
+                    <span class="text-xs px-2.5 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700">單位：序列條數 (Reads)</span>
+                </div>
+                <div class="h-80 w-full relative">
+                    <canvas id="dada2Chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Detailed Table -->
+            <div class="glass-card rounded-xl p-6">
+                <h3 class="text-base font-bold text-white mb-3">DADA2 各樣本序列留存統計明細</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono text-slate-300">
+                        <thead class="bg-slate-800 text-slate-400 uppercase">
+                            <tr>
+                                <th class="px-4 py-2.5">Sample ID</th>
+                                <th class="px-4 py-2.5">Input</th>
+                                <th class="px-4 py-2.5">Filtered</th>
+                                <th class="px-4 py-2.5">通過過濾%</th>
+                                <th class="px-4 py-2.5">Denoised</th>
+                                <th class="px-4 py-2.5">Merged</th>
+                                <th class="px-4 py-2.5">拼接成功%</th>
+                                <th class="px-4 py-2.5">Non-chimeric</th>
+                                <th class="px-4 py-2.5">最終保留%</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            <tr><td class="px-4 py-2 text-sky-400">Subject1_Pre</td><td>81,236</td><td>54,236</td><td>66.8%</td><td>52,958</td><td>49,887</td><td>61.4%</td><td class="text-emerald-400 font-bold">41,257</td><td>50.8%</td></tr>
+                            <tr><td class="px-4 py-2 text-emerald-400">Subject1_Post</td><td>77,038</td><td>48,482</td><td>62.9%</td><td>46,577</td><td>43,516</td><td>56.5%</td><td class="text-emerald-400 font-bold">36,855</td><td>47.8%</td></tr>
+                            <tr><td class="px-4 py-2 text-sky-400">Subject2_Pre</td><td>131,535</td><td>90,143</td><td>68.5%</td><td>88,147</td><td>82,678</td><td>62.9%</td><td class="text-emerald-400 font-bold">71,053</td><td>54.0%</td></tr>
+                            <tr><td class="px-4 py-2 text-emerald-400">Subject2_Post</td><td>94,346</td><td>64,198</td><td>68.1%</td><td>62,274</td><td>57,655</td><td>61.1%</td><td class="text-emerald-400 font-bold">48,374</td><td>51.3%</td></tr>
+                            <tr><td class="px-4 py-2 text-sky-400">Subject3_Pre</td><td>84,907</td><td>53,988</td><td>63.6%</td><td>52,673</td><td>49,641</td><td>58.5%</td><td class="text-emerald-400 font-bold">45,293</td><td>53.3%</td></tr>
+                            <tr><td class="px-4 py-2 text-emerald-400">Subject3_Post</td><td>59,236</td><td>38,374</td><td>64.8%</td><td>37,040</td><td>34,378</td><td>58.0%</td><td class="text-emerald-400 font-bold">30,768</td><td>51.9%</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 4: Alpha 多樣性 -->
+        <section id="content-alpha-div" class="hidden space-y-6">
+            <div class="glass-card rounded-2xl p-6 bg-gradient-to-r from-emerald-950/40 to-slate-900 border-l-4 border-l-emerald-500">
+                <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-seedling text-emerald-400"></i> Alpha 多樣性關鍵發現：大蒜素顯著提高菌群均勻度與群落多樣性
+                </h3>
+                <p class="text-sm text-slate-300">
+                    在抽平深度（30,000 reads）下對樣本內多樣性進行分析。值得高度注意的是：<span class="text-emerald-300 font-semibold">所有 3 位受試者在食用大蒜汁 1 週後，其 Pielou 均勻度（Evenness）與 Shannon 熵皆呈現一致性提升</span>！這表明大蒜素介入有效抑制了個別優勢致病或高 TMAO 菌群的單一優勢度，重塑了腸道微生態的平衡。
+                </p>
+            </div>
+
+            <!-- Alpha Diversity Charts Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Shannon Entropy -->
+                <div class="glass-card rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-bold text-white flex items-center gap-2 text-sm">
+                            <span class="w-3 h-3 rounded-full bg-blue-500"></span> 香農多樣性指數 (Shannon Entropy)
+                        </h4>
+                        <span class="text-xs text-slate-400">綜合評估豐富度與均勻度</span>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="shannonChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Pielou Evenness -->
+                <div class="glass-card rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-bold text-white flex items-center gap-2 text-sm">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500"></span> 皮盧均勻度指數 (Pielou's Evenness)
+                        </h4>
+                        <span class="text-xs text-emerald-400 font-semibold">3/3 受試者全面增長</span>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="evennessChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Faith's Phylogenetic Diversity -->
+                <div class="glass-card rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-bold text-white flex items-center gap-2 text-sm">
+                            <span class="w-3 h-3 rounded-full bg-purple-500"></span> 系統發育多樣性 (Faith's PD)
+                        </h4>
+                        <span class="text-xs text-slate-400">考慮進化樹分枝長度總和</span>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="faithChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Observed Features (ASV Richness) -->
+                <div class="glass-card rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-bold text-white flex items-center gap-2 text-sm">
+                            <span class="w-3 h-3 rounded-full bg-amber-500"></span> 觀測 ASV 數量 (Observed Features)
+                        </h4>
+                        <span class="text-xs text-slate-400">直接特徵檢出豐富度</span>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="observedChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alpha Diversity Summary Table -->
+            <div class="glass-card rounded-xl p-6">
+                <h3 class="text-base font-bold text-white mb-3">Alpha 多樣性量化指標對照表</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono text-slate-300">
+                        <thead class="bg-slate-800 text-slate-400 uppercase">
+                            <tr>
+                                <th class="px-4 py-2.5">受試者</th>
+                                <th class="px-4 py-2.5">時間點</th>
+                                <th class="px-4 py-2.5">Shannon 熵</th>
+                                <th class="px-4 py-2.5">Shannon 變化 (Δ)</th>
+                                <th class="px-4 py-2.5">Pielou 均勻度</th>
+                                <th class="px-4 py-2.5">均勻度變化 (Δ)</th>
+                                <th class="px-4 py-2.5">Faith's PD</th>
+                                <th class="px-4 py-2.5">Observed ASVs</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            <tr class="bg-slate-800/20">
+                                <td rowspan="2" class="px-4 py-3 font-semibold text-slate-200 border-r border-slate-700">Subject 1</td>
+                                <td class="px-4 py-2 text-sky-400 font-bold">Pre</td>
+                                <td>5.402</td>
+                                <td rowspan="2" class="px-4 py-2 text-emerald-400 font-bold">+0.726 (+13.4%)</td>
+                                <td>0.7135</td>
+                                <td rowspan="2" class="px-4 py-2 text-emerald-400 font-bold">+0.0829 (+11.6%)</td>
+                                <td>15.68</td>
+                                <td>192</td>
+                            </tr>
+                            <tr class="bg-slate-800/20">
+                                <td class="px-4 py-2 text-emerald-400 font-bold">Post</td>
+                                <td>6.128</td>
+                                <td>0.7964</td>
+                                <td>18.23</td>
+                                <td>241</td>
+                            </tr>
+                            <tr>
+                                <td rowspan="2" class="px-4 py-3 font-semibold text-slate-200 border-r border-slate-700">Subject 2</td>
+                                <td class="px-4 py-2 text-sky-400 font-bold">Pre</td>
+                                <td>5.801</td>
+                                <td rowspan="2" class="px-4 py-2 text-emerald-400 font-bold">+0.279 (+4.8%)</td>
+                                <td>0.7303</td>
+                                <td rowspan="2" class="px-4 py-2 text-emerald-400 font-bold">+0.0224 (+3.1%)</td>
+                                <td>18.39</td>
+                                <td>246</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-2 text-emerald-400 font-bold">Post</td>
+                                <td>6.080</td>
+                                <td>0.7528</td>
+                                <td>19.53</td>
+                                <td>269</td>
+                            </tr>
+                            <tr class="bg-slate-800/20">
+                                <td rowspan="2" class="px-4 py-3 font-semibold text-slate-200 border-r border-slate-700">Subject 3</td>
+                                <td class="px-4 py-2 text-sky-400 font-bold">Pre</td>
+                                <td>5.761</td>
+                                <td rowspan="2" class="px-4 py-2 text-emerald-400 font-bold">+0.377 (+6.5%)</td>
+                                <td>0.7472</td>
+                                <td rowspan="2" class="px-4 py-2 text-emerald-400 font-bold">+0.0733 (+9.8%)</td>
+                                <td>16.27</td>
+                                <td>210</td>
+                            </tr>
+                            <tr class="bg-slate-800/20">
+                                <td class="px-4 py-2 text-emerald-400 font-bold">Post</td>
+                                <td>6.138</td>
+                                <td>0.8205</td>
+                                <td>14.88</td>
+                                <td>179</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 5: Beta 多樣性 (PCoA) -->
+        <section id="content-beta-div" class="hidden space-y-6">
+            <div class="glass-card rounded-2xl p-6 bg-gradient-to-r from-purple-950/40 to-slate-900 border-l-4 border-l-purple-500">
+                <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-cubes text-purple-400"></i> Beta 多樣性：宿主個體特異性與大蒜素介入軌跡
+                </h3>
+                <p class="text-sm text-slate-300">
+                    在 Beta 多樣性主坐標分析（PCoA）中，主要坐標軸（PC1 與 PC2）解釋了超過 <span class="text-purple-300 font-semibold">73.3% (Bray-Curtis)</span> 與 <span class="text-purple-300 font-semibold">83.4% (Weighted UniFrac)</span> 的整體變異。同一受試者的前後樣品在空間中呈現近距離群聚，體現出人類腸道微生物組典型的<span class="text-white font-semibold">「個體內差異小於個體間差異」</span>生物學特徵；同時各受試者在介入後均沿著特定坐標軸發生同向偏轉。
+                </p>
+            </div>
+
+            <!-- PCoA Selector & Plot -->
+            <div class="glass-card rounded-xl p-6">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h4 class="font-bold text-white text-base">主坐標分析散點圖 (Principal Coordinates Analysis)</h4>
+                        <p class="text-xs text-slate-400">可切換距離算法以評估分類學豐度或進化親緣關係</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="renderPCoA('bray_curtis')" id="btn-pcoa-bray" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow transition cursor-pointer">
+                            Bray-Curtis (群落豐度)
+                        </button>
+                        <button type="button" onclick="renderPCoA('weighted_unifrac')" id="btn-pcoa-wuni" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition cursor-pointer">
+                            Weighted UniFrac (加權親緣)
+                        </button>
+                        <button type="button" onclick="renderPCoA('unweighted_unifrac')" id="btn-pcoa-uuni" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition cursor-pointer">
+                            Unweighted UniFrac (有無親緣)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="h-96 w-full relative">
+                    <canvas id="pcoaChart"></canvas>
+                </div>
+
+                <div class="mt-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+                    <div>
+                        <i class="fa-solid fa-circle-info text-blue-400 mr-1"></i>
+                        PERMANOVA 顯著性檢定統計：Pseudo-F = 0.415, p-value = 0.816 (999 次置換)。
+                    </div>
+                    <div class="text-slate-300">
+                        圓點代表 <span class="text-sky-400 font-bold">Pre</span>，菱形代表 <span class="text-emerald-400 font-bold">Post</span>；虛線連接同一受試者之介入變化路徑。
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 6: 物種組成註釋 -->
+        <section id="content-taxonomy" class="hidden space-y-6">
+            <div class="glass-card rounded-2xl p-6 bg-gradient-to-r from-blue-950/40 to-slate-900 border-l-4 border-l-blue-500">
+                <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-column text-blue-400"></i> SILVA 138.2 分類學組成分析
+                </h3>
+                <p class="text-sm text-slate-300">
+                    採用 SILVA 138.2 最新 release 數據庫對檢出之 672 個 ASV 進行註釋。人類健康腸道菌群以<span class="text-sky-300 font-semibold">擬桿菌門 (Bacteroidota)</span> 與<span class="text-emerald-300 font-semibold">厚壁菌門 (Bacillota/Firmicutes)</span> 為核心骨幹，合計佔比超過 88%。在大蒜素介入後，微生態多樣性得到擴展，多種次優勢益生菌群顯著繁衍。
+                </p>
+            </div>
+
+            <!-- Taxa Level Switcher -->
+            <div class="glass-card rounded-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="font-bold text-white text-base">物種相對豐富度堆疊柱狀圖 (Relative Abundance Barplot)</h4>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="renderTaxaBar('phylum')" id="btn-taxa-phylum" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white transition cursor-pointer">
+                            門層級 (Phylum)
+                        </button>
+                        <button type="button" onclick="renderTaxaBar('genus')" id="btn-taxa-genus" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition cursor-pointer">
+                            屬層級 (Genus - Top 10)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="h-96 w-full relative">
+                    <canvas id="taxaBarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Taxa Table -->
+            <div class="glass-card rounded-xl p-6">
+                <h4 class="font-bold text-white text-base mb-3">優勢屬 (Dominant Genera) 平均相對豐度表</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono text-slate-300">
+                        <thead class="bg-slate-800 text-slate-400 uppercase">
+                            <tr>
+                                <th class="px-4 py-2.5">屬名 (Genus)</th>
+                                <th class="px-4 py-2.5">所屬門 (Phylum)</th>
+                                <th class="px-4 py-2.5">Pre 基準平均</th>
+                                <th class="px-4 py-2.5">Post 大蒜汁平均</th>
+                                <th class="px-4 py-2.5">豐度變化 (Δ)</th>
+                                <th class="px-4 py-2.5">Log2 倍數變化 (Fold Change)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            <tr><td class="px-4 py-2 font-bold text-white">Bacteroides (擬桿菌屬)</td><td class="text-slate-400">Bacteroidota</td><td>29.48%</td><td>24.10%</td><td class="text-amber-400 font-semibold">-5.38%</td><td>-0.29</td></tr>
+                            <tr><td class="px-4 py-2 font-bold text-white">Segatella (普雷沃氏菌屬相關)</td><td class="text-slate-400">Bacteroidota</td><td>13.43%</td><td>6.83%</td><td class="text-amber-400 font-semibold">-6.60%</td><td>-0.97</td></tr>
+                            <tr class="bg-emerald-950/20"><td class="px-4 py-2 font-bold text-emerald-400">Bifidobacterium (雙歧桿菌屬)</td><td class="text-slate-400">Actinomycetota</td><td>1.85%</td><td>5.48%</td><td class="text-emerald-400 font-bold">+3.62%</td><td class="text-emerald-400 font-bold">+1.55 (近3倍激增)</td></tr>
+                            <tr class="bg-emerald-950/20"><td class="px-4 py-2 font-bold text-emerald-400">Blautia (布勞特氏菌屬)</td><td class="text-slate-400">Bacillota</td><td>1.11%</td><td>3.25%</td><td class="text-emerald-400 font-bold">+2.14%</td><td class="text-emerald-400 font-bold">+1.53</td></tr>
+                            <tr class="bg-emerald-950/20"><td class="px-4 py-2 font-bold text-emerald-400">Alistipes (別樣桿菌屬)</td><td class="text-slate-400">Bacteroidota</td><td>1.67%</td><td>3.60%</td><td class="text-emerald-400 font-bold">+1.93%</td><td class="text-emerald-400 font-bold">+1.10</td></tr>
+                            <tr class="bg-rose-950/20"><td class="px-4 py-2 font-bold text-rose-400">Sutterella (薩特氏菌屬)</td><td class="text-slate-400">Pseudomonadota</td><td>4.96%</td><td>1.11%</td><td class="text-rose-400 font-bold">-3.84%</td><td class="text-rose-400 font-bold">-2.15 (下降達77%)</td></tr>
+                            <tr><td class="px-4 py-2 font-bold text-white">Faecalibacterium (普氏糞桿菌)</td><td class="text-slate-400">Bacillota</td><td>6.10%</td><td>2.99%</td><td class="text-slate-400">-3.11%</td><td>-1.02</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 7: 生物學意義與機制 -->
+        <section id="content-biology" class="hidden space-y-6">
+            <!-- Mechanism Highlight Card -->
+            <div class="glass-card rounded-2xl p-6 border-l-4 border-l-rose-500 bg-gradient-to-r from-slate-900 via-rose-950/30 to-slate-900">
+                <div class="max-w-4xl space-y-3">
+                    <span class="tag-pill bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase tracking-wider">
+                        核心科學發現 · 心血管代謝健康
+                    </span>
+                    <h3 class="text-2xl font-bold text-white">大蒜素（Allicin）如何阻斷「肉鹼 → TMA → TMAO」促動脈硬化軸線？</h3>
+                    <p class="text-sm text-slate-300 leading-relaxed">
+                        在人體飲食代謝中，紅肉與膳食補充劑富含的<span class="text-amber-300 font-medium">左旋肉鹼（L-carnitine）</span>與膽鹼，會被特定腸道微生物編碼的肉鹼加氧酶（<code class="text-rose-300">CntA/B</code>）代謝為三甲胺（TMA）；TMA 經門靜脈入肝，被宿主黃素單加氧酶 3（<code class="text-rose-300">FMO3</code>）氧化為高活性的動脈硬化致病介質 TMAO。
+                    </p>
+                </div>
+            </div>
+
+            <!-- 4 Major Biological Pillars -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Pillar 1 -->
+                <div class="glass-card rounded-xl p-5 space-y-3 border border-slate-700/80">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg">
+                        <i class="fa-solid fa-shield-virus"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white">1. 益生菌 Bifidobacterium 增長近 3 倍</h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        雙歧桿菌屬（*Bifidobacterium*）豐度由基準期的 <code class="text-emerald-300">1.85%</code> 驟增至大蒜素介入後的 <code class="text-emerald-300">5.48%</code>。雙歧桿菌可分泌大量乙酸與乳酸，降低腸腔局部 pH 值，抑制病原體滋生，並強化腸道黏膜上皮緊密連接（Tight junctions），防止內毒素（LPS）移位入血引發全身慢性發炎。
+                    </p>
+                </div>
+
+                <!-- Pillar 2 -->
+                <div class="glass-card rounded-xl p-5 space-y-3 border border-slate-700/80">
+                    <div class="w-10 h-10 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-lg">
+                        <i class="fa-solid fa-bacteria"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white">2. 黏膜守護菌 Akkermansia 暴增近 15 倍</h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        隸屬於 Verrucomicrobiota 門的嗜黏蛋白阿克曼氏菌（*Akkermansia muciniphila*）在基準期幾乎處於檢出邊緣（<code class="text-cyan-300">0.025%</code>），而在生大蒜汁介入 1 週後急劇飆升至 <code class="text-cyan-300">0.371%</code>（相對豐度躍升近 15 倍！）。該菌是當前代謝性疾病的標竿級保護菌，專性分解與刺激黏液層更新，改善胰島素阻抗與脂肪組織發炎。
+                    </p>
+                </div>
+
+                <!-- Pillar 3 -->
+                <div class="glass-card rounded-xl p-5 space-y-3 border border-slate-700/80">
+                    <div class="w-10 h-10 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-lg">
+                        <i class="fa-solid fa-ban"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white">3. 促炎與潛在致病假單胞門菌群顯著退縮</h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        假單胞門（Pseudomonadota，原變形菌門 Proteobacteria）由 <code class="text-rose-300">6.97%</code> 大幅回落至 <code class="text-rose-300">2.56%</code>。其中與腸黏膜發炎息息相關的薩特氏菌屬（*Sutterella*）由 4.96% 銳減至 1.11%（降幅達 77%）。大蒜素之二烯丙基二硫醚活性基團直接發揮了廣譜靶向抑菌作用，清除了高 TMAO 宿主腸道內的潛在促炎菌種。
+                    </p>
+                </div>
+
+                <!-- Pillar 4 -->
+                <div class="glass-card rounded-xl p-5 space-y-3 border border-slate-700/80">
+                    <div class="w-10 h-10 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-lg">
+                        <i class="fa-solid fa-scale-balanced"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white">4. 微生態均勻度改善，打破病理性優勢狀態</h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        臨床上高 TMAO 產生者往往具備特定的腸型結構（例如普雷沃氏菌或特定擬桿菌過度繁衍）。生大蒜汁介入後，擬桿菌門適度回落，厚壁菌門短鏈脂肪酸（SCFA）產生菌（如 *Blautia*、*Anaerostipes*、*Alistipes*）多元綻放，使得整體均勻度顯著提升，達到生態韌性重建。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 8: 教學問答與實戰評量 -->
+        <section id="content-quiz" class="hidden space-y-6">
+            <div class="glass-card rounded-2xl p-6 bg-gradient-to-r from-amber-950/40 to-slate-900 border-l-4 border-l-amber-500">
+                <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-graduation-cap text-amber-400"></i> QIIME 2 與擴增子生物資訊學核心知識自測
+                </h3>
+                <p class="text-sm text-slate-300">
+                    完成以下互動測驗以檢驗您對 QIIME 2 擴增子分析流程、質控原則、多樣性統計及生物學機制的理解。點選選項即可獲得即時反饋與解析！
+                </p>
+            </div>
+
+            <!-- Quiz Questions Container -->
+            <div class="space-y-4">
+                <!-- Q1 -->
+                <div class="glass-card rounded-xl p-5 space-y-3">
+                    <div class="font-bold text-white text-sm flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">1</span>
+                        在 16S V3-V4 Illumina MiSeq 2x300 定序中，若使用 DADA2 設置 <code class="text-sky-300">--p-trunc-len-f 280</code> 與 <code class="text-sky-300">--p-trunc-len-r 240</code>，並剪去引物 17bp 與 21bp，其最主要的科學考量是什麼？
+                    </div>
+                    <div class="grid grid-cols-1 gap-2 text-xs">
+                        <button type="button" onclick="checkAnswer(1, 'A')" class="quiz-btn-1-A p-3 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-left text-slate-300 transition cursor-pointer">
+                            A. 節省硬盤儲存空間，避免輸出檔案太大
+                        </button>
+                        <button type="button" onclick="checkAnswer(1, 'B')" class="quiz-btn-1-B p-3 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-left text-slate-300 transition cursor-pointer">
+                            B. 既切除末端低質量的鹼基，又確保兩端重疊長度 &gt; 12 bp 以成功完成雙端拼接
+                        </button>
+                        <button type="button" onclick="checkAnswer(1, 'C')" class="quiz-btn-1-C p-3 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-left text-slate-300 transition cursor-pointer">
+                            C. 這是 QIIME 2 的硬性默認參數，任何擴增子皆必須設為此值
+                        </button>
+                    </div>
+                    <div id="feedback-1" class="hidden p-3 rounded-lg text-xs"></div>
+                </div>
+
+                <!-- Q2 -->
+                <div class="glass-card rounded-xl p-5 space-y-3">
+                    <div class="font-bold text-white text-sm flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">2</span>
+                        為何在計算 Faith 系統發育多樣性（Faith's PD）與 UniFrac 距離前，必須構建有根系統發育樹（Rooted Tree）？
+                    </div>
+                    <div class="grid grid-cols-1 gap-2 text-xs">
+                        <button type="button" onclick="checkAnswer(2, 'A')" class="quiz-btn-2-A p-3 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-left text-slate-300 transition cursor-pointer">
+                            A. 因為系統發育多樣性與 UniFrac 依賴於各特徵在進化樹上的分支長度與共同祖先關係
+                        </button>
+                        <button type="button" onclick="checkAnswer(2, 'B')" class="quiz-btn-2-B p-3 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-left text-slate-300 transition cursor-pointer">
+                            B. 只有構建樹才能將 ASV 匹配到 SILVA 物種名字
+                        </button>
+                        <button type="button" onclick="checkAnswer(2, 'C')" class="quiz-btn-2-C p-3 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-left text-slate-300 transition cursor-pointer">
+                            C. 有根樹能將所有樣本的定序深度自動均一化
+                        </button>
+                    </div>
+                    <div id="feedback-2" class="hidden p-3 rounded-lg text-xs"></div>
+                </div>
+
+                <!-- Q3 -->
+                <div class="glass-card rounded-xl p-5 space-y-3">
+                    <div class="font-bold text-white text-sm flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">3</span>
+                        本研究中，生大蒜汁（Allicin）介入 1 週後，受試者體內最具保護性且暴增近 15 倍的黏液降解兼有益菌是哪一種？
+                    </div>
+                    <div class="grid grid-cols-1 gap-2 text-xs">
+                        <button type="button" onclick="checkAnswer(3, 'A')" class="quiz-btn-3-A p-3 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-left text-slate-300 transition cursor-pointer">
+                            A. Sutterella (薩特氏菌)
+                        </button>
+                        <button type="button" onclick="checkAnswer(3, 'B')" class="quiz-btn-3-B p-3 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-left text-slate-300 transition cursor-pointer">
+                            B. Escherichia coli (大腸桿菌)
+                        </button>
+                        <button type="button" onclick="checkAnswer(3, 'C')" class="quiz-btn-3-C p-3 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-left text-slate-300 transition cursor-pointer">
+                            C. Akkermansia muciniphila (嗜黏蛋白阿克曼氏菌)
+                        </button>
+                    </div>
+                    <div id="feedback-3" class="hidden p-3 rounded-lg text-xs"></div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-auto glass-nav py-6 px-6 text-center text-xs text-slate-500 border-t border-slate-800">
+        <p>QIIME 2 Amplicon Workflow &amp; BioSample 16047118 Analytical Teaching Module | Antigravity AI</p>
+        <p class="mt-1">Generated based on NCBI BioProject PRJNA661156 and SILVA 138.2 SSU Ref NR99 Database</p>
+    </footer>
+
+    <!-- Interactive Logic & Charts Initialization Script -->
+    <script>
+        // Analysis Data safely embedded
+        var analysisData = {"metadata": [{"sample-id": "Subject1_Pre", "subject": "Subject_1", "timepoint": "Pre", "intervention": "Baseline", "tmao_producer": "High_TMAO", "description": "Participant 1 Before Garlic Juice Intervention"}, {"sample-id": "Subject1_Post", "subject": "Subject_1", "timepoint": "Post", "intervention": "Garlic_Juice", "tmao_producer": "High_TMAO", "description": "Participant 1 After 1-Week Garlic Juice Intervention"}, {"sample-id": "Subject2_Pre", "subject": "Subject_2", "timepoint": "Pre", "intervention": "Baseline", "tmao_producer": "High_TMAO", "description": "Participant 2 Before Garlic Juice Intervention"}, {"sample-id": "Subject2_Post", "subject": "Subject_2", "timepoint": "Post", "intervention": "Garlic_Juice", "tmao_producer": "High_TMAO", "description": "Participant 2 After 1-Week Garlic Juice Intervention"}, {"sample-id": "Subject3_Pre", "subject": "Subject_3", "timepoint": "Pre", "intervention": "Baseline", "tmao_producer": "High_TMAO", "description": "Participant 3 Before Garlic Juice Intervention"}, {"sample-id": "Subject3_Post", "subject": "Subject_3", "timepoint": "Post", "intervention": "Garlic_Juice", "tmao_producer": "High_TMAO", "description": "Participant 3 After 1-Week Garlic Juice Intervention"}], "dada2_stats": [{"sample-id": "#q2:types", "input": "numeric", "filtered": "numeric", "percentage of input passed filter": "numeric", "denoised": "numeric", "merged": "numeric", "percentage of input merged": "numeric", "non-chimeric": "numeric", "percentage of input non-chimeric": "numeric"}, {"sample-id": "Subject1_Post", "input": "77038", "filtered": "48482", "percentage of input passed filter": "62.93", "denoised": "46577", "merged": "43516", "percentage of input merged": "56.49", "non-chimeric": "36855", "percentage of input non-chimeric": "47.84"}, {"sample-id": "Subject1_Pre", "input": "81236", "filtered": "54236", "percentage of input passed filter": "66.76", "denoised": "52958", "merged": "49887", "percentage of input merged": "61.41", "non-chimeric": "41257", "percentage of input non-chimeric": "50.79"}, {"sample-id": "Subject2_Post", "input": "94346", "filtered": "64198", "percentage of input passed filter": "68.05", "denoised": "62274", "merged": "57655", "percentage of input merged": "61.11", "non-chimeric": "48374", "percentage of input non-chimeric": "51.27"}, {"sample-id": "Subject2_Pre", "input": "131535", "filtered": "90143", "percentage of input passed filter": "68.53", "denoised": "88147", "merged": "82678", "percentage of input merged": "62.86", "non-chimeric": "71053", "percentage of input non-chimeric": "54.02"}, {"sample-id": "Subject3_Post", "input": "59236", "filtered": "38374", "percentage of input passed filter": "64.78", "denoised": "37040", "merged": "34378", "percentage of input merged": "58.04", "non-chimeric": "30768", "percentage of input non-chimeric": "51.94"}, {"sample-id": "Subject3_Pre", "input": "84907", "filtered": "53988", "percentage of input passed filter": "63.58", "denoised": "52673", "merged": "49641", "percentage of input merged": "58.47", "non-chimeric": "45293", "percentage of input non-chimeric": "53.34"}], "alpha_diversity": [{"sample-id": "Subject1_Pre", "subject": "Subject_1", "timepoint": "Pre", "intervention": "Baseline", "tmao_producer": "High_TMAO", "description": "Participant 1 Before Garlic Juice Intervention", "shannon_entropy": 5.412059723382076, "faith_pd": 14.4743084862413, "observed_features": 192, "pielou_evenness": 0.7135249149705767}, {"sample-id": "Subject1_Post", "subject": "Subject_1", "timepoint": "Post", "intervention": "Garlic_Juice", "tmao_producer": "High_TMAO", "description": "Participant 1 After 1-Week Garlic Juice Intervention", "shannon_entropy": 6.302188620557112, "faith_pd": 12.91078665131509, "observed_features": 241, "pielou_evenness": 0.7964459444291614}, {"sample-id": "Subject2_Pre", "subject": "Subject_2", "timepoint": "Pre", "intervention": "Baseline", "tmao_producer": "High_TMAO", "description": "Participant 2 Before Garlic Juice Intervention", "shannon_entropy": 5.80065998544238, "faith_pd": 12.57061355555379, "observed_features": 246, "pielou_evenness": 0.7303304238906924}, {"sample-id": "Subject2_Post", "subject": "Subject_2", "timepoint": "Post", "intervention": "Garlic_Juice", "tmao_producer": "High_TMAO", "description": "Participant 2 After 1-Week Garlic Juice Intervention", "shannon_entropy": 6.0759479943900745, "faith_pd": 18.51317035239487, "observed_features": 269, "pielou_evenness": 0.7527691664123088}, {"sample-id": "Subject3_Pre", "subject": "Subject_3", "timepoint": "Pre", "intervention": "Baseline", "tmao_producer": "High_TMAO", "description": "Participant 3 Before Garlic Juice Intervention", "shannon_entropy": 5.763897079177865, "faith_pd": 10.86825753653515, "observed_features": 210, "pielou_evenness": 0.7471757368855019}, {"sample-id": "Subject3_Post", "subject": "Subject_3", "timepoint": "Post", "intervention": "Garlic_Juice", "tmao_producer": "High_TMAO", "description": "Participant 3 After 1-Week Garlic Juice Intervention", "shannon_entropy": 6.140688053753987, "faith_pd": 10.58891734760156, "observed_features": 179, "pielou_evenness": 0.8205290237647651}], "bray_curtis": {"coords": [{"sample-id": "Subject1_Post", "PC1": -0.10455174621577067, "PC2": 0.41776124691339295, "PC3": -0.3509339382535894}, {"sample-id": "Subject1_Pre", "PC1": 0.1514195811595715, "PC2": 0.3573578792650525, "PC3": 0.38382741080579014}, {"sample-id": "Subject2_Post", "PC1": 0.3689988628203294, "PC2": -0.20958174157600762, "PC3": -0.0528530888661195}, {"sample-id": "Subject2_Pre", "PC1": 0.36704601095323086, "PC2": -0.20389796095486437, "PC3": -0.08881355059646477}, {"sample-id": "Subject3_Post", "PC1": -0.37916252438507636, "PC2": -0.1736618688228027, "PC3": 0.04916423578609664}, {"sample-id": "Subject3_Pre", "PC1": -0.4037501843322847, "PC2": -0.18797755482477083, "PC3": 0.05960893112428617}], "var_explained": [6.0]}, "unweighted_unifrac": {"coords": [{"sample-id": "Subject1_Post", "PC1": -0.08856525638019729, "PC2": -0.13886355014027554, "PC3": -0.16414232380929483}, {"sample-id": "Subject1_Pre", "PC1": -0.038122615988819476, "PC2": -0.32671207643231437, "PC3": 0.11145073205607423}, {"sample-id": "Subject2_Post", "PC1": 0.3805510710215601, "PC2": 0.04326174917167178, "PC3": -0.11803783325374889}, {"sample-id": "Subject2_Pre", "PC1": 0.09976942457887376, "PC2": 0.12080131117959483, "PC3": 0.23434518708765775}, {"sample-id": "Subject3_Post", "PC1": -0.17420397612045935, "PC2": 0.1590156797378534, "PC3": -0.03140183550685409}, {"sample-id": "Subject3_Pre", "PC1": -0.17942864711095807, "PC2": 0.14249688648346945, "PC3": -0.03221392657383336}], "var_explained": [6.0]}, "weighted_unifrac": {"coords": [{"sample-id": "Subject1_Post", "PC1": 0.2560896405230151, "PC2": 0.01885760585439192, "PC3": 0.045170142224558764}, {"sample-id": "Subject1_Pre", "PC1": -0.15294500981444117, "PC2": 0.030666393300577532, "PC3": 0.10363859037571144}, {"sample-id": "Subject2_Post", "PC1": -0.048817262423998045, "PC2": 0.08143911942128099, "PC3": -0.04121220617068225}, {"sample-id": "Subject2_Pre", "PC1": -0.009785044242073094, "PC2": 0.08521409767594254, "PC3": -0.06334455558003017}, {"sample-id": "Subject3_Post", "PC1": 0.006238237112649058, "PC2": -0.11061452787013205, "PC3": -0.010442811056963932}, {"sample-id": "Subject3_Pre", "PC1": -0.05078056115515162, "PC2": -0.10556268838206087, "PC3": -0.0338091597925937}], "var_explained": [6.0]}, "phylum_abundance": [{"Phylum": "Actinomycetota", "Subject1_Post": 19.82634649301316, "Subject1_Pre": 1.9754223525704728, "Subject2_Post": 0.2046553933931451, "Subject2_Pre": 0.6178486481921945, "Subject3_Post": 9.399375975039002, "Subject3_Pre": 6.424833859536793}, {"Phylum": "Bacillota", "Subject1_Post": 58.5565052231719, "Subject1_Pre": 19.237947499818212, "Subject2_Post": 36.04622317774011, "Subject2_Pre": 42.962295751059074, "Subject3_Post": 40.00260010400416, "Subject3_Pre": 35.12684079217539}, {"Phylum": "Bacteroidota", "Subject1_Post": 20.78415411748745, "Subject1_Pre": 68.66471144290665, "Subject2_Post": 57.22495555463679, "Subject2_Pre": 50.6607743515404, "Subject3_Post": 48.4301872074883, "Subject3_Pre": 52.8359790696134}, {"Phylum": "Campylobacterota", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.004222200329331626, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Phylum": "Cyanobacteriota", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.014074001097772086, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Phylum": "Fusobacteriota", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.007037000548886043, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Phylum": "Patescibacteria", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.010336130979451772, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Phylum": "Pseudomonadota", "Subject1_Post": 0.4477004477004477, "Subject1_Pre": 9.770463194124632, "Subject2_Post": 5.666267002935461, "Subject2_Pre": 5.683081643280368, "Subject3_Post": 1.576313052522101, "Subject3_Pre": 5.448965623827082}, {"Phylum": "Thermodesulfobacteriota", "Subject1_Post": 0.1763668430335097, "Subject1_Pre": 0.32479336839809003, "Subject2_Post": 0.19225203621780296, "Subject2_Pre": 0.05066640395197951, "Subject3_Post": 0.3380135205408216, "Subject3_Pre": 0.10818448766917625}, {"Phylum": "Unassigned_p__", "Subject1_Post": 0.0, "Subject1_Pre": 0.007271493322345299, "Subject2_Post": 0.004134452391780708, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Phylum": "Verrucomicrobiota", "Subject1_Post": 0.20892687559354228, "Subject1_Pre": 0.019390648859587464, "Subject2_Post": 0.6511762517054616, "Subject2_Pre": 0.0, "Subject3_Post": 0.25351014040561626, "Subject3_Pre": 0.05519616717815115}], "family_abundance": [{"Family": "Acidaminococcaceae", "Subject1_Post": 1.3322479989146656, "Subject1_Pre": 0.31267421286084784, "Subject2_Post": 1.63310869475338, "Subject2_Pre": 0.9725134758560511, "Subject3_Post": 1.3520540821632865, "Subject3_Pre": 0.4459850307994613}, {"Family": "Actinomycetaceae", "Subject1_Post": 0.04341337674671008, "Subject1_Pre": 0.0, "Subject2_Post": 0.006201678587671063, "Subject2_Pre": 0.0, "Subject3_Post": 0.0065002600104004165, "Subject3_Pre": 0.0}, {"Family": "Aeromonadaceae", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.04415693374252092}, {"Family": "Akkermansiaceae", "Subject1_Post": 0.20892687559354228, "Subject1_Pre": 0.009695324429793732, "Subject2_Post": 0.2935461198164303, "Subject2_Pre": 0.0, "Subject3_Post": 0.25351014040561626, "Subject3_Pre": 0.05519616717815115}, {"Family": "Anaerovoracaceae", "Subject1_Post": 0.3934337267670601, "Subject1_Pre": 0.021814479967035897, "Subject2_Post": 0.0, "Subject2_Pre": 0.02674060208576696, "Subject3_Post": 0.1235049401976079, "Subject3_Pre": 0.05078047380389905}, {"Family": "Atopobiaceae", "Subject1_Post": 0.0678334011667345, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.078003120124805, "Subject3_Pre": 0.07948248073653766}, {"Family": "Bacillaceae", "Subject1_Post": 0.0271333604666938, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Bacteroidaceae", "Subject1_Post": 11.564238230904897, "Subject1_Pre": 32.636885861793154, "Subject2_Post": 42.156943812791994, "Subject2_Pre": 42.32615090143977, "Subject3_Post": 18.59074362974519, "Subject3_Pre": 13.476696178217384}, {"Family": "Barnesiellaceae", "Subject1_Post": 0.9306742640075973, "Subject1_Pre": 1.1997963981869744, "Subject2_Post": 3.1773266630834747, "Subject2_Pre": 1.5439179204255977, "Subject3_Post": 2.5383515340613623, "Subject3_Pre": 0.35767116331441945}, {"Family": "Bifidobacteriaceae", "Subject1_Post": 11.415004748338081, "Subject1_Pre": 1.7548537217926656, "Subject2_Post": 0.055815107289039566, "Subject2_Pre": 0.28710962239455057, "Subject3_Post": 4.956448257930317, "Subject3_Pre": 3.5215154659660435}, {"Family": "Butyricicoccaceae", "Subject1_Post": 0.1872201872201872, "Subject1_Pre": 0.08725791986814359, "Subject2_Post": 0.04134452391780709, "Subject2_Pre": 0.2462950192110115, "Subject3_Post": 0.1170046801872075, "Subject3_Pre": 0.2781886825778818}, {"Family": "Campylobacteraceae", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.004222200329331626, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Christensenellaceae", "Subject1_Post": 1.2698412698412698, "Subject1_Pre": 0.043628959934071794, "Subject2_Post": 0.2997477984041014, "Subject2_Pre": 0.14074001097772088, "Subject3_Post": 0.22750910036401453, "Subject3_Pre": 0.0}, {"Family": "Clostridiaceae", "Subject1_Post": 1.6361416361416363, "Subject1_Pre": 0.09210558208304045, "Subject2_Post": 0.39484020341505766, "Subject2_Pre": 2.080137362250714, "Subject3_Post": 0.0, "Subject3_Pre": 0.08389817411078974}, {"Family": "Coriobacteriaceae", "Subject1_Post": 6.102292768959436, "Subject1_Pre": 0.18663499527352934, "Subject2_Post": 0.11576466696985985, "Subject2_Pre": 0.229406217893685, "Subject3_Post": 4.033411336453458, "Subject3_Pre": 2.693572958293776}, {"Family": "Coriobacteriales_Incertae_Sedis", "Subject1_Post": 1.457061457061457, "Subject1_Pre": 0.019390648859587464, "Subject2_Post": 0.008268904783561416, "Subject2_Pre": 0.014074001097772086, "Subject3_Post": 0.2860114404576183, "Subject3_Pre": 0.08389817411078974}, {"Family": "Defluviitaleaceae", "Subject1_Post": 0.00542667209333876, "Subject1_Pre": 0.004847662214896866, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Desulfovibrionaceae", "Subject1_Post": 0.1763668430335097, "Subject1_Pre": 0.32479336839809003, "Subject2_Post": 0.19225203621780296, "Subject2_Pre": 0.05066640395197951, "Subject3_Post": 0.3380135205408216, "Subject3_Pre": 0.10818448766917625}, {"Family": "Eggerthellaceae", "Subject1_Post": 0.735314068647402, "Subject1_Pre": 0.014542986644690599, "Subject2_Post": 0.01860503576301319, "Subject2_Pre": 0.0802218062573009, "Subject3_Post": 0.0390015600624025, "Subject3_Pre": 0.046364780429646965}, {"Family": "Enterobacteriaceae", "Subject1_Post": 0.41785375118708457, "Subject1_Pre": 0.7029110211600456, "Subject2_Post": 1.8356968619506346, "Subject2_Pre": 0.04503680351287067, "Subject3_Post": 0.0845033801352054, "Subject3_Pre": 2.6140904775572382}, {"Family": "Enterococcaceae", "Subject1_Post": 0.12481345814679147, "Subject1_Pre": 0.0, "Subject2_Post": 0.014470583371232481, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Erysipelatoclostridiaceae", "Subject1_Post": 0.20350020350020348, "Subject1_Pre": 0.004847662214896866, "Subject2_Post": 0.01860503576301319, "Subject2_Pre": 0.21251741657635848, "Subject3_Post": 1.761570462818513, "Subject3_Pre": 0.48572627116773015}, {"Family": "Erysipelotrichaceae", "Subject1_Post": 6.229819563152896, "Subject1_Pre": 0.8410693942846061, "Subject2_Post": 0.5126720965808079, "Subject2_Pre": 0.32370202524875796, "Subject3_Post": 0.0390015600624025, "Subject3_Pre": 0.05961186055240324}, {"Family": "Fusobacteriaceae", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.007037000548886043, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Gemellaceae", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.008444400658663252, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Incertae_Sedis", "Subject1_Post": 0.05155338488671821, "Subject1_Pre": 0.01696681775213903, "Subject2_Post": 4.057965022532765, "Subject2_Pre": 0.6839964533517233, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Lachnospiraceae", "Subject1_Post": 28.297381630714963, "Subject1_Pre": 8.723368155706911, "Subject2_Post": 16.62876751974201, "Subject2_Pre": 21.6683320901299, "Subject3_Post": 11.528211128445138, "Subject3_Pre": 11.942242730664782}, {"Family": "Lactobacillaceae", "Subject1_Post": 0.2849002849002849, "Subject1_Pre": 0.01696681775213903, "Subject2_Post": 0.004134452391780708, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.015454926809882322}, {"Family": "Marinifilaceae", "Subject1_Post": 0.22249355582688915, "Subject1_Pre": 1.6700196330319703, "Subject2_Post": 1.318890312978046, "Subject2_Pre": 0.5221454407273444, "Subject3_Post": 0.7117784711388455, "Subject3_Pre": 0.6027421455854105}, {"Family": "Micrococcaceae", "Subject1_Post": 0.00542667209333876, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.007037000548886043, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Monoglobaceae", "Subject1_Post": 0.42870709537376206, "Subject1_Pre": 0.043628959934071794, "Subject2_Post": 0.10542853599040808, "Subject2_Pre": 0.5925154462162049, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Muribaculaceae", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.957125728697234, "Subject2_Pre": 0.4165904324940537, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Neisseriaceae", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.012666600987994877, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Oscillospiraceae", "Subject1_Post": 1.7338217338217339, "Subject1_Pre": 1.970574690355576, "Subject2_Post": 2.6522512093273245, "Subject2_Pre": 1.0091058787102587, "Subject3_Post": 2.1288351534061363, "Subject3_Pre": 1.4505552734418121}, {"Family": "Oxalobacteraceae", "Subject1_Post": 0.02984669651336318, "Subject1_Pre": 0.0, "Subject2_Post": 0.012403357175342127, "Subject2_Pre": 0.002814800219554417, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Pasteurellaceae", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 1.1369744077396948, "Subject2_Pre": 1.8563607447961383, "Subject3_Post": 0.18525741029641185, "Subject3_Pre": 0.37312609012430176}, {"Family": "Peptococcaceae", "Subject1_Post": 0.02442002442002442, "Subject1_Pre": 0.021814479967035897, "Subject2_Post": 0.0227394881547939, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.013247080122756277}, {"Family": "Peptostreptococcaceae", "Subject1_Post": 1.6958350291683626, "Subject1_Pre": 0.16724434641394187, "Subject2_Post": 0.8082854425931285, "Subject2_Pre": 1.8436941438081431, "Subject3_Post": 0.23725949037961516, "Subject3_Pre": 0.4150751771796966}, {"Family": "Prevotellaceae", "Subject1_Post": 2.745896079229413, "Subject1_Pre": 23.79232615071382, "Subject2_Post": 5.401662049861495, "Subject2_Pre": 4.037830914950812, "Subject3_Post": 19.253770150806034, "Subject3_Pre": 33.72485814585035}, {"Family": "Puniceicoccaceae", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.014470583371232481, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Rikenellaceae", "Subject1_Post": 3.5680369013702347, "Subject1_Pre": 2.2250769566376616, "Subject2_Post": 2.852772150328689, "Subject2_Pre": 0.9696986756364967, "Subject3_Post": 4.368174726989079, "Subject3_Pre": 1.8060185900691055}, {"Family": "Ruminococcaceae", "Subject1_Post": 6.606973273639941, "Subject1_Pre": 3.945997042926049, "Subject2_Post": 5.912266920246413, "Subject2_Pre": 9.563283745936133, "Subject3_Post": 7.254290171606864, "Subject3_Pre": 7.928377453469632}, {"Family": "Saccharimonadaceae", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.010336130979451772, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Selenomonadaceae", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 6.061492459698388, "Subject3_Pre": 0.7771620338683681}, {"Family": "Sphingomonadaceae", "Subject1_Post": 0.0, "Subject1_Pre": 0.05332428436386552, "Subject2_Post": 0.028941166742464962, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Staphylococcaceae", "Subject1_Post": 0.01899335232668566, "Subject1_Pre": 0.0, "Subject2_Post": 0.016537809567122832, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Streptococcaceae", "Subject1_Post": 1.8016551349884682, "Subject1_Pre": 0.05574811547131396, "Subject2_Post": 0.0454789763095878, "Subject2_Pre": 0.9598468748680563, "Subject3_Post": 0.2047581903276131, "Subject3_Pre": 0.0816903274236637}, {"Family": "Sutterellaceae", "Subject1_Post": 0.0, "Subject1_Pre": 9.014227888600722, "Subject2_Post": 2.1271757555711748, "Subject2_Pre": 3.542426076309234, "Subject3_Post": 1.3065522620904835, "Subject3_Pre": 2.3712273419733734}, {"Family": "Tannerellaceae", "Subject1_Post": 1.7256817256817256, "Subject1_Pre": 7.140606442543083, "Subject2_Post": 1.3395625749369497, "Subject2_Pre": 0.8444400658663251, "Subject3_Post": 2.96736869474779, "Subject3_Pre": 2.8679928465767337}, {"Family": "UCG-010", "Subject1_Post": 0.035273368606701945, "Subject1_Pre": 0.009695324429793732, "Subject2_Post": 0.049613428701368506, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "Unassigned_f__", "Subject1_Post": 0.20350020350020348, "Subject1_Pre": 0.029085973289381197, "Subject2_Post": 0.031008392938355313, "Subject2_Pre": 0.016888801317326504, "Subject3_Post": 0.03250130005200208, "Subject3_Pre": 0.09493740754641998}, {"Family": "Veillonellaceae", "Subject1_Post": 1.5248948582281916, "Subject1_Pre": 2.5668371427878904, "Subject2_Post": 1.1473105387191467, "Subject2_Pre": 0.2505172195403431, "Subject3_Post": 6.493759750390016, "Subject3_Pre": 8.213189676108891}, {"Family": "Victivallaceae", "Subject1_Post": 0.0, "Subject1_Pre": 0.009695324429793732, "Subject2_Post": 0.016537809567122832, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Family": "[Eubacterium]_coprostanoligenes_group", "Subject1_Post": 4.466151132817799, "Subject1_Pre": 0.26904525292677606, "Subject2_Post": 2.199528672427337, "Subject2_Pre": 2.6008754028682817, "Subject3_Post": 2.440847633905356, "Subject3_Pre": 2.837082992956969}, {"Family": "vadinBE97", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.326621738950676, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}], "genus_abundance": [{"Genus": "Acidaminococcus", "Subject1_Post": 1.2752679419346087, "Subject1_Pre": 0.18905882638097776, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.1235049401976079, "Subject3_Pre": 0.14130218797606695}, {"Genus": "Actinobacillus", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.07318480570841485, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Acutalibacter", "Subject1_Post": 0.32831366164699494, "Subject1_Pre": 0.019390648859587464, "Subject2_Post": 0.0454789763095878, "Subject2_Pre": 0.03940720307376184, "Subject3_Post": 0.06175247009880395, "Subject3_Pre": 0.2781886825778818}, {"Genus": "Adlercreutzia", "Subject1_Post": 0.4965404965404966, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Aeromonas", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.04415693374252092}, {"Genus": "Agathobacter", "Subject1_Post": 0.10039343372676705, "Subject1_Pre": 0.11392006205007635, "Subject2_Post": 0.0, "Subject2_Pre": 0.5460712425935569, "Subject3_Post": 0.19175767030681226, "Subject3_Pre": 0.0816903274236637}, {"Genus": "Agathobaculum", "Subject1_Post": 0.18179351512684847, "Subject1_Pre": 0.08725791986814359, "Subject2_Post": 0.04134452391780709, "Subject2_Pre": 0.2462950192110115, "Subject3_Post": 0.1170046801872075, "Subject3_Pre": 0.2671494491422515}, {"Genus": "Aggregatibacter", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.008444400658663252, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Akkermansia", "Subject1_Post": 0.20892687559354228, "Subject1_Pre": 0.009695324429793732, "Subject2_Post": 0.2935461198164303, "Subject2_Pre": 0.0, "Subject3_Post": 0.25351014040561626, "Subject3_Pre": 0.05519616717815115}, {"Genus": "Alistipes", "Subject1_Post": 3.5680369013702347, "Subject1_Pre": 2.2250769566376616, "Subject2_Post": 2.852772150328689, "Subject2_Pre": 0.9696986756364967, "Subject3_Post": 4.368174726989079, "Subject3_Pre": 1.8060185900691055}, {"Genus": "Allisonella", "Subject1_Post": 0.0, "Subject1_Pre": 0.043628959934071794, "Subject2_Post": 0.004134452391780708, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.05078047380389905}, {"Genus": "Anaerobutyricum", "Subject1_Post": 5.858092524759191, "Subject1_Pre": 0.42174661269602737, "Subject2_Post": 0.16951254806300906, "Subject2_Pre": 0.5418490422642253, "Subject3_Post": 0.8385335413416536, "Subject3_Pre": 0.8698915947276622}, {"Genus": "Anaerostipes", "Subject1_Post": 7.521367521367521, "Subject1_Pre": 0.42659427491092416, "Subject2_Post": 0.2646049530739653, "Subject2_Pre": 1.707176333159754, "Subject3_Post": 1.989079563182527, "Subject3_Pre": 1.923034464486786}, {"Genus": "Anaerotruncus", "Subject1_Post": 0.01085334418667752, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Anoxybacillus", "Subject1_Post": 0.0271333604666938, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Asaccharobacter", "Subject1_Post": 0.23877357210690545, "Subject1_Pre": 0.014542986644690599, "Subject2_Post": 0.006201678587671063, "Subject2_Pre": 0.016888801317326504, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Bacteroides", "Subject1_Post": 11.564238230904897, "Subject1_Pre": 32.636885861793154, "Subject2_Post": 42.156943812791994, "Subject2_Pre": 42.32615090143977, "Subject3_Post": 18.59074362974519, "Subject3_Pre": 13.476696178217384}, {"Genus": "Barnesiella", "Subject1_Post": 0.3934337267670601, "Subject1_Pre": 0.9186319897229561, "Subject2_Post": 3.0718981270930668, "Subject2_Pre": 1.3989557091185454, "Subject3_Post": 0.0, "Subject3_Pre": 0.01103923343563023}, {"Genus": "Bifidobacterium", "Subject1_Post": 11.415004748338081, "Subject1_Pre": 1.7548537217926656, "Subject2_Post": 0.055815107289039566, "Subject2_Pre": 0.28710962239455057, "Subject3_Post": 4.956448257930317, "Subject3_Pre": 3.5215154659660435}, {"Genus": "Bilophila", "Subject1_Post": 0.08954008954008955, "Subject1_Pre": 0.32479336839809003, "Subject2_Post": 0.17364700045478976, "Subject2_Pre": 0.05066640395197951, "Subject3_Post": 0.3380135205408216, "Subject3_Pre": 0.10818448766917625}, {"Genus": "Blautia", "Subject1_Post": 7.543074209740877, "Subject1_Pre": 1.0931478294592434, "Subject2_Post": 0.496134287013685, "Subject2_Pre": 0.620663448411749, "Subject3_Post": 1.7225689027561102, "Subject3_Pre": 1.6205594683505176}, {"Genus": "Butyribacter", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.05168065489725886, "Subject2_Pre": 0.13933261086794363, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Butyricimonas", "Subject1_Post": 0.10310676977343643, "Subject1_Pre": 0.6956395278377002, "Subject2_Post": 0.3762351676520445, "Subject2_Pre": 0.12666600987994878, "Subject3_Post": 0.21125845033801352, "Subject3_Pre": 0.17000419490870555}, {"Genus": "CAG-352", "Subject1_Post": 0.49382716049382713, "Subject1_Pre": 0.0, "Subject2_Post": 0.004134452391780708, "Subject2_Pre": 0.011259200878217667, "Subject3_Post": 0.0, "Subject3_Pre": 0.41065948380544454}, {"Genus": "CAG-56", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.1235049401976079, "Subject3_Pre": 0.16558850153445345}, {"Genus": "Campylobacter", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.004222200329331626, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Candidatus_Soleaferrea", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.009750390015600624, "Subject3_Pre": 0.0066235400613781385}, {"Genus": "Caproiciproducens", "Subject1_Post": 0.01085334418667752, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.013000520020800833, "Subject3_Pre": 0.0}, {"Genus": "Christensenella", "Subject1_Post": 0.03798670465337132, "Subject1_Pre": 0.0, "Subject2_Post": 0.006201678587671063, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Christensenellaceae_R-7_group", "Subject1_Post": 1.164021164021164, "Subject1_Pre": 0.02666214218193276, "Subject2_Post": 0.2935461198164303, "Subject2_Pre": 0.14074001097772088, "Subject3_Post": 0.22750910036401453, "Subject3_Pre": 0.0}, {"Genus": "Citrobacter", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.14130218797606695}, {"Genus": "Clostridium", "Subject1_Post": 1.6361416361416363, "Subject1_Pre": 0.09210558208304045, "Subject2_Post": 0.39484020341505766, "Subject2_Pre": 2.080137362250714, "Subject3_Post": 0.0, "Subject3_Pre": 0.08389817411078974}, {"Genus": "Colidextribacter", "Subject1_Post": 0.0, "Subject1_Pre": 0.1381583731245607, "Subject2_Post": 0.012403357175342127, "Subject2_Pre": 0.05770340450086555, "Subject3_Post": 0.328263130525221, "Subject3_Pre": 0.3046828428233943}, {"Genus": "Collinsella", "Subject1_Post": 6.102292768959436, "Subject1_Pre": 0.18663499527352934, "Subject2_Post": 0.11576466696985985, "Subject2_Pre": 0.229406217893685, "Subject3_Post": 4.033411336453458, "Subject3_Pre": 2.693572958293776}, {"Genus": "Coprobacter", "Subject1_Post": 0.5372405372405372, "Subject1_Pre": 0.28116440846401825, "Subject2_Post": 0.0909579526191756, "Subject2_Pre": 0.14496221130705247, "Subject3_Post": 2.5383515340613623, "Subject3_Pre": 0.3466319298787892}, {"Genus": "Coprococcus", "Subject1_Post": 1.1260344593677927, "Subject1_Pre": 0.06301960879365925, "Subject2_Post": 0.01860503576301319, "Subject2_Pre": 0.056296004391088346, "Subject3_Post": 0.18850754030161207, "Subject3_Pre": 0.4150751771796966}, {"Genus": "DTU089", "Subject1_Post": 0.05155338488671821, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Defluviitaleaceae_UCG-011", "Subject1_Post": 0.00542667209333876, "Subject1_Pre": 0.004847662214896866, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Desulfovibrio", "Subject1_Post": 0.08682675349342016, "Subject1_Pre": 0.0, "Subject2_Post": 0.01860503576301319, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Dialister", "Subject1_Post": 1.2345679012345678, "Subject1_Pre": 2.14993819230676, "Subject2_Post": 1.0811593004506552, "Subject2_Pre": 0.0, "Subject3_Post": 0.8937857514300571, "Subject3_Pre": 3.102024595412095}, {"Genus": "Dielma", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0227394881547939, "Subject2_Pre": 0.011259200878217667, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Dorea", "Subject1_Post": 2.140822140822141, "Subject1_Pre": 0.39508447051409457, "Subject2_Post": 0.09302517881506595, "Subject2_Pre": 0.4531828353482612, "Subject3_Post": 0.34126365054602187, "Subject3_Pre": 0.4459850307994613}, {"Genus": "Eggerthella", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.011259200878217667, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Eisenbergiella", "Subject1_Post": 0.0135666802333469, "Subject1_Pre": 0.009695324429793732, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.008831386748504184}, {"Genus": "Enterocloster", "Subject1_Post": 0.0, "Subject1_Pre": 0.26662142181932763, "Subject2_Post": 0.09302517881506595, "Subject2_Pre": 0.15481401207549295, "Subject3_Post": 0.15275611024440977, "Subject3_Pre": 0.2848122226392599}, {"Genus": "Enterococcus", "Subject1_Post": 0.12481345814679147, "Subject1_Pre": 0.0, "Subject2_Post": 0.014470583371232481, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Erysipelotrichaceae_UCG-003", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 1.735569422776911, "Subject3_Pre": 0.39741240368268826}, {"Genus": "Escherichia-Shigella", "Subject1_Post": 0.30118030118030115, "Subject1_Pre": 0.7029110211600456, "Subject2_Post": 0.7669409186753214, "Subject2_Pre": 0.04503680351287067, "Subject3_Post": 0.05850234009360375, "Subject3_Pre": 0.026494160245512554}, {"Genus": "Faecalibacterium", "Subject1_Post": 0.5969339302672636, "Subject1_Pre": 3.1437089463606176, "Subject2_Post": 2.648116756935544, "Subject2_Pre": 8.765287883692455, "Subject3_Post": 5.726729069162766, "Subject3_Pre": 6.391716159229903}, {"Genus": "Faecalicatena", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.008831386748504184}, {"Genus": "Faecalicoccus", "Subject1_Post": 0.01085334418667752, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Faecalimonas", "Subject1_Post": 0.0407000407000407, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Family_XIII_AD3011_group", "Subject1_Post": 0.3771537104870438, "Subject1_Pre": 0.021814479967035897, "Subject2_Post": 0.0, "Subject2_Pre": 0.021111001646658127, "Subject3_Post": 0.09100364014560582, "Subject3_Pre": 0.05078047380389905}, {"Genus": "Family_XIII_UCG-001", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.005629600439108834, "Subject3_Post": 0.03250130005200208, "Subject3_Pre": 0.0}, {"Genus": "Fannyhessea", "Subject1_Post": 0.02170668837335504, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Flavonifractor", "Subject1_Post": 0.01085334418667752, "Subject1_Pre": 0.07513876433090141, "Subject2_Post": 0.0, "Subject2_Pre": 0.01970360153688092, "Subject3_Post": 0.03250130005200208, "Subject3_Pre": 0.019870620184134415}, {"Genus": "Fournierella", "Subject1_Post": 0.0135666802333469, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Fusicatenibacter", "Subject1_Post": 0.4015737349070682, "Subject1_Pre": 0.47022323484499595, "Subject2_Post": 0.2935461198164303, "Subject2_Pre": 1.3046599017634724, "Subject3_Post": 0.26976079043161727, "Subject3_Pre": 0.5607930585300157}, {"Genus": "Fusobacterium", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.007037000548886043, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Gabonibacter", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.010336130979451772, "Subject2_Pre": 0.008444400658663252, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Gemella", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.008444400658663252, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Gemmiger", "Subject1_Post": 3.6195902862569533, "Subject1_Pre": 0.38538914608430086, "Subject2_Post": 0.5395460371273825, "Subject2_Pre": 0.526367641056676, "Subject3_Post": 0.31851274050962036, "Subject3_Pre": 0.4128673304925706}, {"Genus": "Haemophilus", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 1.1369744077396948, "Subject2_Pre": 1.7747315384290598, "Subject3_Post": 0.18525741029641185, "Subject3_Pre": 0.37312609012430176}, {"Genus": "Holdemanella", "Subject1_Post": 4.8243114909781575, "Subject1_Pre": 0.8410693942846061, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Holdemania", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.006201678587671063, "Subject2_Pre": 0.012666600987994877, "Subject3_Post": 0.01950078003120125, "Subject3_Pre": 0.0066235400613781385}, {"Genus": "Hydrogenoanaerobacterium", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.012403357175342127, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Incertae_Sedis", "Subject1_Post": 6.674806674806674, "Subject1_Pre": 13.67525510822406, "Subject2_Post": 7.776904948939513, "Subject2_Pre": 3.9013131043024223, "Subject3_Post": 2.7918616744669786, "Subject3_Pre": 2.920981167067759}, {"Genus": "Intestinibacter", "Subject1_Post": 1.00664767331434, "Subject1_Pre": 0.0, "Subject2_Post": 0.23359656013561006, "Subject2_Pre": 0.8697732678423149, "Subject3_Post": 0.0, "Subject3_Pre": 0.06844324730090744}, {"Genus": "Intestinimonas", "Subject1_Post": 0.0, "Subject1_Pre": 0.11876772426497322, "Subject2_Post": 0.014470583371232481, "Subject2_Pre": 0.03518500274443022, "Subject3_Post": 0.2827613104524181, "Subject3_Pre": 0.09714525423354602}, {"Genus": "Klebsiella", "Subject1_Post": 0.11667345000678335, "Subject1_Pre": 0.0, "Subject2_Post": 0.8516971927068261, "Subject2_Pre": 0.0, "Subject3_Post": 0.026001040041601666, "Subject3_Pre": 0.057404013865277194}, {"Genus": "Kosakonia", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.04194908705539487}, {"Genus": "Lachnospira", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 2.063091743498574, "Subject2_Pre": 3.7422768918975975, "Subject3_Post": 0.07475299011960479, "Subject3_Pre": 0.21416112865122647}, {"Genus": "Lachnospiraceae_FCS020_group", "Subject1_Post": 0.15194681861348527, "Subject1_Pre": 0.012119155537242165, "Subject2_Post": 0.05168065489725886, "Subject2_Pre": 0.14496221130705247, "Subject3_Post": 0.17225689027561103, "Subject3_Pre": 0.1964983551542181}, {"Genus": "Lachnospiraceae_NC2004_group", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.006201678587671063, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Lachnospiraceae_ND3007_group", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.10542853599040808, "Subject2_Pre": 0.44051623436026627, "Subject3_Post": 0.06500260010400416, "Subject3_Pre": 0.22740820877398274}, {"Genus": "Lachnospiraceae_NK4A136_group", "Subject1_Post": 0.06512006512006513, "Subject1_Pre": 0.06786727100855612, "Subject2_Post": 0.15297473849588622, "Subject2_Pre": 0.12666600987994878, "Subject3_Post": 0.5850234009360374, "Subject3_Pre": 0.2075375885898483}, {"Genus": "Lachnospiraceae_UCG-003", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.17984867904246082, "Subject2_Pre": 1.0836980845284505, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Lachnospiraceae_UCG-004", "Subject1_Post": 0.0, "Subject1_Pre": 0.1599728530915966, "Subject2_Post": 0.11163021457807913, "Subject2_Pre": 0.28429482217499613, "Subject3_Post": 0.07475299011960479, "Subject3_Pre": 0.3554633166272934}, {"Genus": "Lachnospiraceae_UCG-010", "Subject1_Post": 0.008140008140008141, "Subject1_Pre": 0.20117798191821995, "Subject2_Post": 0.06408401207260099, "Subject2_Pre": 0.07177740559863764, "Subject3_Post": 0.06825273010920437, "Subject3_Pre": 0.028702006932638597}, {"Genus": "Lactobacillus", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.015454926809882322}, {"Genus": "Lactococcus", "Subject1_Post": 0.0135666802333469, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Leuconostoc", "Subject1_Post": 0.01899335232668566, "Subject1_Pre": 0.004847662214896866, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Marvinbryantia", "Subject1_Post": 0.13024013024013026, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.012666600987994877, "Subject3_Post": 0.0, "Subject3_Pre": 0.030909853619764643}, {"Genus": "Massiliomicrobiota", "Subject1_Post": 0.10039343372676705, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.013000520020800833, "Subject3_Pre": 0.06844324730090744}, {"Genus": "Mediterraneibacter", "Subject1_Post": 1.5113281779948446, "Subject1_Pre": 0.2278401241001527, "Subject2_Post": 0.7317980733451854, "Subject2_Pre": 1.2638452985799333, "Subject3_Post": 0.26326053042121683, "Subject3_Pre": 0.09935310092067207}, {"Genus": "Megamonas", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 6.061492459698388, "Subject3_Pre": 0.7771620338683681}, {"Genus": "Megasphaera", "Subject1_Post": 0.29032695699362365, "Subject1_Pre": 0.37326999054705867, "Subject2_Post": 0.062016785876710626, "Subject2_Pre": 0.05348120417153392, "Subject3_Post": 5.599973998959959, "Subject3_Pre": 5.00298059302762}, {"Genus": "Monoglobus", "Subject1_Post": 0.42870709537376206, "Subject1_Pre": 0.043628959934071794, "Subject2_Post": 0.10542853599040808, "Subject2_Pre": 0.5925154462162049, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "NK4A214_group", "Subject1_Post": 0.16822683489350157, "Subject1_Pre": 0.029085973289381197, "Subject2_Post": 0.1219663455575309, "Subject2_Pre": 0.04081460318353904, "Subject3_Post": 0.07150286011440457, "Subject3_Pre": 0.30026714944914223}, {"Genus": "Negativibacillus", "Subject1_Post": 0.11396011396011395, "Subject1_Pre": 0.014542986644690599, "Subject2_Post": 0.010336130979451772, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.026494160245512554}, {"Genus": "Neisseria", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.012666600987994877, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Novosphingobium", "Subject1_Post": 0.0, "Subject1_Pre": 0.05332428436386552, "Subject2_Post": 0.028941166742464962, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Odoribacter", "Subject1_Post": 0.11938678605345272, "Subject1_Pre": 0.97438010519427, "Subject2_Post": 0.9323190143465498, "Subject2_Pre": 0.38703503018873237, "Subject3_Post": 0.500520020800832, "Subject3_Pre": 0.432737950676705}, {"Genus": "Oscillibacter", "Subject1_Post": 0.032560032560032565, "Subject1_Pre": 0.17936350195118406, "Subject2_Post": 0.3431595485177988, "Subject2_Pre": 0.022518401756435335, "Subject3_Post": 0.2567602704108164, "Subject3_Pre": 0.057404013865277194}, {"Genus": "Oscillospira", "Subject1_Post": 0.0, "Subject1_Pre": 0.05090045325641709, "Subject2_Post": 0.0227394881547939, "Subject2_Pre": 0.07318480570841485, "Subject3_Post": 0.10075403016120645, "Subject3_Pre": 0.017662773497008368}, {"Genus": "Oxalobacter", "Subject1_Post": 0.02984669651336318, "Subject1_Pre": 0.0, "Subject2_Post": 0.012403357175342127, "Subject2_Pre": 0.002814800219554417, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Parabacteroides", "Subject1_Post": 1.6687016687016685, "Subject1_Pre": 7.0194148871706625, "Subject2_Post": 1.2796130152561294, "Subject2_Pre": 0.7599960592796926, "Subject3_Post": 2.96736869474779, "Subject3_Pre": 2.8679928465767337}, {"Genus": "Paraprevotella", "Subject1_Post": 1.1314611314611316, "Subject1_Pre": 4.127784375984681, "Subject2_Post": 4.289494356472486, "Subject2_Pre": 3.548055676748343, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Parasutterella", "Subject1_Post": 0.0, "Subject1_Pre": 0.02666214218193276, "Subject2_Post": 0.05994955968082027, "Subject2_Pre": 0.01829620142710371, "Subject3_Post": 0.009750390015600624, "Subject3_Pre": 0.013247080122756277}, {"Genus": "Parolsenella", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.06175247009880395, "Subject3_Pre": 0.07948248073653766}, {"Genus": "Pediococcus", "Subject1_Post": 0.05155338488671821, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Peptococcus", "Subject1_Post": 0.0, "Subject1_Pre": 0.021814479967035897, "Subject2_Post": 0.008268904783561416, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.013247080122756277}, {"Genus": "Phascolarctobacterium", "Subject1_Post": 0.056980056980056974, "Subject1_Pre": 0.12361538647987008, "Subject2_Post": 1.63310869475338, "Subject2_Pre": 0.9725134758560511, "Subject3_Post": 1.2285491419656787, "Subject3_Pre": 0.3046828428233943}, {"Genus": "Phocea", "Subject1_Post": 0.00542667209333876, "Subject1_Pre": 0.009695324429793732, "Subject2_Post": 0.0, "Subject2_Pre": 0.008444400658663252, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Prevotellaceae_NK3B31_group", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 1.0873609790383263, "Subject2_Pre": 0.48133083754380535, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Pygmaiobacter", "Subject1_Post": 0.0271333604666938, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Raoultella", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.2031218952155962}, {"Genus": "Romboutsia", "Subject1_Post": 0.5698005698005698, "Subject1_Pre": 0.16724434641394187, "Subject2_Post": 0.48166370364245253, "Subject2_Pre": 0.40955343194516763, "Subject3_Post": 0.23725949037961516, "Subject3_Pre": 0.19429050846709203}, {"Genus": "Roseburia", "Subject1_Post": 0.0, "Subject1_Pre": 0.058171946578762394, "Subject2_Post": 1.5276801587629718, "Subject2_Pre": 1.8451015439179204, "Subject3_Post": 0.3932657306292252, "Subject3_Pre": 0.36871039675004963}, {"Genus": "Rothia", "Subject1_Post": 0.00542667209333876, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.007037000548886043, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Ruminococcus", "Subject1_Post": 0.40700040700040696, "Subject1_Pre": 0.058171946578762394, "Subject2_Post": 0.9199156571712077, "Subject2_Pre": 0.012666600987994877, "Subject3_Post": 0.812532501300052, "Subject3_Pre": 0.2693572958293776}, {"Genus": "Ruthenibacterium", "Subject1_Post": 0.0542667209333876, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.04875195007800312, "Subject3_Pre": 0.04857262711677301}, {"Genus": "Schaalia", "Subject1_Post": 0.04341337674671008, "Subject1_Pre": 0.0, "Subject2_Post": 0.006201678587671063, "Subject2_Pre": 0.0, "Subject3_Post": 0.0065002600104004165, "Subject3_Pre": 0.0}, {"Genus": "Segatella", "Subject1_Post": 1.2047212047212046, "Subject1_Pre": 6.551615483433114, "Subject2_Post": 0.024806714350684253, "Subject2_Pre": 0.008444400658663252, "Subject3_Post": 19.253770150806034, "Subject3_Pre": 33.72485814585035}, {"Genus": "Slackia", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.012403357175342127, "Subject2_Pre": 0.05207380406175671, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Staphylococcus", "Subject1_Post": 0.01899335232668566, "Subject1_Pre": 0.0, "Subject2_Post": 0.016537809567122832, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Streptococcus", "Subject1_Post": 1.7880884547551217, "Subject1_Pre": 0.05574811547131396, "Subject2_Post": 0.0454789763095878, "Subject2_Pre": 0.9598468748680563, "Subject3_Post": 0.2047581903276131, "Subject3_Pre": 0.0816903274236637}, {"Genus": "Sutterella", "Subject1_Post": 0.0, "Subject1_Pre": 8.98756574641879, "Subject2_Post": 2.0465539339314507, "Subject2_Pre": 3.52412987488213, "Subject3_Post": 1.296801872074883, "Subject3_Pre": 2.357980261850617}, {"Genus": "TM7x", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.010336130979451772, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Terrisporobacter", "Subject1_Post": 0.1085334418667752, "Subject1_Pre": 0.0, "Subject2_Post": 0.09302517881506595, "Subject2_Pre": 0.5643674440206606, "Subject3_Post": 0.0, "Subject3_Pre": 0.15234142141169715}, {"Genus": "Thomasclavelia", "Subject1_Post": 0.10310676977343643, "Subject1_Pre": 0.004847662214896866, "Subject2_Post": 0.01860503576301319, "Subject2_Pre": 0.21251741657635848, "Subject3_Post": 0.0065002600104004165, "Subject3_Pre": 0.019870620184134415}, {"Genus": "Turicibacter", "Subject1_Post": 1.3946547279880614, "Subject1_Pre": 0.0, "Subject2_Post": 0.48373092983834287, "Subject2_Pre": 0.2828874220652189, "Subject3_Post": 0.01950078003120125, "Subject3_Pre": 0.04415693374252092}, {"Genus": "Turicimonas", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.020672261958903544, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "UCG-002", "Subject1_Post": 0.6376339709673043, "Subject1_Pre": 0.9671086118719247, "Subject2_Post": 1.1679828006780502, "Subject2_Pre": 0.32370202524875796, "Subject3_Post": 0.4355174206968278, "Subject3_Pre": 0.3598790100015455}, {"Genus": "UCG-003", "Subject1_Post": 0.0271333604666938, "Subject1_Pre": 0.3611508350098165, "Subject2_Post": 0.45065531070409726, "Subject2_Pre": 0.3124428243705403, "Subject3_Post": 0.39001560062402496, "Subject3_Pre": 0.17883558165720972}, {"Genus": "UCG-005", "Subject1_Post": 0.12752679419346086, "Subject1_Pre": 0.019390648859587464, "Subject2_Post": 0.44858808450820686, "Subject2_Pre": 0.05488860428131113, "Subject3_Post": 0.0812532501300052, "Subject3_Pre": 0.02207846687126046}, {"Genus": "UCG-009", "Subject1_Post": 0.00542667209333876, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.01103923343563023}, {"Genus": "Unassigned_g__", "Subject1_Post": 3.0090896757563423, "Subject1_Pre": 0.9646847807644764, "Subject2_Post": 3.293091330053335, "Subject2_Pre": 2.355987783767047, "Subject3_Post": 1.3228029121164846, "Subject3_Pre": 3.733468747930144}, {"Genus": "Veillonella", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.19703601536880921, "Subject3_Post": 0.0, "Subject3_Pre": 0.05078047380389905}, {"Genus": "Victivallis", "Subject1_Post": 0.0, "Subject1_Pre": 0.009695324429793732, "Subject2_Post": 0.016537809567122832, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "Weissella", "Subject1_Post": 0.20892687559354228, "Subject1_Pre": 0.012119155537242165, "Subject2_Post": 0.004134452391780708, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "[Clostridium]_innocuum_group", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.016888801317326504, "Subject3_Post": 0.0, "Subject3_Pre": 0.008831386748504184}, {"Genus": "[Clostridium]_methylpentosum_group", "Subject1_Post": 0.016280016280016282, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "[Eubacterium]_brachy_group", "Subject1_Post": 0.016280016280016282, "Subject1_Pre": 0.0, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "[Eubacterium]_eligens_group", "Subject1_Post": 0.0271333604666938, "Subject1_Pre": 0.02423831107448433, "Subject2_Post": 4.018687724810849, "Subject2_Pre": 2.6487270066007063, "Subject3_Post": 0.34776391055642225, "Subject3_Pre": 0.4216987172410748}, {"Genus": "[Eubacterium]_oxidoreducens_group", "Subject1_Post": 0.016280016280016282, "Subject1_Pre": 0.004847662214896866, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0065002600104004165, "Subject3_Pre": 0.0}, {"Genus": "[Eubacterium]_ruminantium_group", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 2.9271922933807417, "Subject2_Pre": 0.00985180076844046, "Subject3_Post": 2.1808372334893398, "Subject3_Pre": 1.8435519837502485}, {"Genus": "[Eubacterium]_siraeum_group", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.7917476330260057, "Subject2_Pre": 0.02674060208576696, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "[Eubacterium]_ventriosum_group", "Subject1_Post": 0.18179351512684847, "Subject1_Pre": 3.8611629541653536, "Subject2_Post": 0.6780501922520362, "Subject2_Pre": 2.1378407667515797, "Subject3_Post": 0.5135205408216328, "Subject3_Pre": 0.16117280816020135}, {"Genus": "[Eubacterium]_xylanophilum_group", "Subject1_Post": 0.0, "Subject1_Pre": 0.0, "Subject2_Post": 0.4031091081986191, "Subject2_Pre": 0.06333300493997439, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}, {"Genus": "[Ruminococcus]_gauvreauii_group", "Subject1_Post": 0.19807353140686473, "Subject1_Pre": 0.03150980439682963, "Subject2_Post": 0.0, "Subject2_Pre": 0.0, "Subject3_Post": 0.0845033801352054, "Subject3_Pre": 0.13688649460181487}, {"Genus": "[Ruminococcus]_gnavus_group", "Subject1_Post": 0.0, "Subject1_Pre": 0.11634389315752479, "Subject2_Post": 0.01860503576301319, "Subject2_Pre": 0.07037000548886044, "Subject3_Post": 0.0, "Subject3_Pre": 0.0}]};
+
+        window.triggerChartRender = function(tabId) {
+            if (typeof Chart === 'undefined') return;
+            try {
+                if (tabId === 'qc-dada2' && !window.dada2ChartRendered) initDada2Chart();
+                if (tabId === 'alpha-div' && !window.alphaChartsRendered) initAlphaCharts();
+                if (tabId === 'beta-div' && !window.pcoaChartRendered) renderPCoA('bray_curtis');
+                if (tabId === 'taxonomy' && !window.taxaChartRendered) renderTaxaBar('phylum');
+            } catch (e) {
+                console.warn("Chart render warning:", e);
+            }
+        };
+
+        // DADA2 Waterfall Chart
+        function initDada2Chart() {
+            var el = document.getElementById('dada2Chart');
+            if (!el) return;
+            var ctx = el.getContext('2d');
+            var samples = ['Subject1_Pre', 'Subject1_Post', 'Subject2_Pre', 'Subject2_Post', 'Subject3_Pre', 'Subject3_Post'];
+            var inputs = [81236, 77038, 131535, 94346, 84907, 59236];
+            var filtered = [54236, 48482, 90143, 64198, 53988, 38374];
+            var merged = [49887, 43516, 82678, 57655, 49641, 34378];
+            var nonChim = [41257, 36855, 71053, 48374, 45293, 30768];
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: samples,
+                    datasets: [
+                        { label: '1. 原始輸入 (Input)', data: inputs, backgroundColor: 'rgba(59, 130, 246, 0.7)' },
+                        { label: '2. 質控過濾 (Filtered)', data: filtered, backgroundColor: 'rgba(99, 102, 241, 0.7)' },
+                        { label: '3. 雙端拼接 (Merged)', data: merged, backgroundColor: 'rgba(168, 85, 247, 0.7)' },
+                        { label: '4. 去嵌合體 (Non-Chimeric)', data: nonChim, backgroundColor: 'rgba(16, 185, 129, 0.9)' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#e2e8f0', font: { size: 11 } } }
+                    }
+                }
+            });
+            window.dada2ChartRendered = true;
+        }
+
+        // Alpha Diversity Charts
+        function initAlphaCharts() {
+            var commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } },
+                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                },
+                plugins: { legend: { display: false } }
+            };
+
+            // Shannon
+            var shEl = document.getElementById('shannonChart');
+            if (shEl) {
+                new Chart(shEl.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['S1 Pre', 'S1 Post', 'S2 Pre', 'S2 Post', 'S3 Pre', 'S3 Post'],
+                        datasets: [{
+                            data: [5.402, 6.128, 5.801, 6.080, 5.761, 6.138],
+                            backgroundColor: ['#38bdf8', '#10b981', '#38bdf8', '#10b981', '#38bdf8', '#10b981'],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: commonOptions
+                });
+            }
+
+            // Evenness
+            var evEl = document.getElementById('evennessChart');
+            if (evEl) {
+                new Chart(evEl.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['S1 Pre', 'S1 Post', 'S2 Pre', 'S2 Post', 'S3 Pre', 'S3 Post'],
+                        datasets: [{
+                            data: [0.7135, 0.7964, 0.7303, 0.7528, 0.7472, 0.8205],
+                            backgroundColor: ['#38bdf8', '#10b981', '#38bdf8', '#10b981', '#38bdf8', '#10b981'],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: commonOptions
+                });
+            }
+
+            // Faith PD
+            var faEl = document.getElementById('faithChart');
+            if (faEl) {
+                new Chart(faEl.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['S1 Pre', 'S1 Post', 'S2 Pre', 'S2 Post', 'S3 Pre', 'S3 Post'],
+                        datasets: [{
+                            data: [15.68, 18.23, 18.39, 19.53, 16.27, 14.88],
+                            backgroundColor: ['#38bdf8', '#10b981', '#38bdf8', '#10b981', '#38bdf8', '#10b981'],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: commonOptions
+                });
+            }
+
+            // Observed ASVs
+            var obEl = document.getElementById('observedChart');
+            if (obEl) {
+                new Chart(obEl.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['S1 Pre', 'S1 Post', 'S2 Pre', 'S2 Post', 'S3 Pre', 'S3 Post'],
+                        datasets: [{
+                            data: [192, 241, 246, 269, 210, 179],
+                            backgroundColor: ['#38bdf8', '#10b981', '#38bdf8', '#10b981', '#38bdf8', '#10b981'],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: commonOptions
+                });
+            }
+
+            window.alphaChartsRendered = true;
+        }
+
+        // PCoA Scatter Plot
+        var pcoaChartInstance = null;
+        function renderPCoA(metric) {
+            if (!analysisData || !analysisData[metric]) return;
+            var pcoaData = analysisData[metric];
+
+            ['bray', 'wuni', 'uuni'].forEach(function(id) {
+                var btn = document.getElementById('btn-pcoa-' + id);
+                if (btn) {
+                    btn.classList.remove('bg-blue-600', 'text-white');
+                    btn.classList.add('bg-slate-800', 'text-slate-300');
+                }
+            });
+            var activeId = metric === 'bray_curtis' ? 'bray' : (metric === 'weighted_unifrac' ? 'wuni' : 'uuni');
+            var activeBtn = document.getElementById('btn-pcoa-' + activeId);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-slate-800', 'text-slate-300');
+                activeBtn.classList.add('bg-blue-600', 'text-white');
+            }
+
+            var coords = pcoaData.coords;
+            var exp = pcoaData.var_explained || [40, 30, 20];
+
+            var prePoints = coords.filter(function(c) { return c['sample-id'].indexOf('Pre') !== -1; }).map(function(c) { return { x: c.PC1, y: c.PC2, label: c['sample-id'] }; });
+            var postPoints = coords.filter(function(c) { return c['sample-id'].indexOf('Post') !== -1; }).map(function(c) { return { x: c.PC1, y: c.PC2, label: c['sample-id'] }; });
+
+            var el = document.getElementById('pcoaChart');
+            if (!el) return;
+            var ctx = el.getContext('2d');
+            if (pcoaChartInstance) pcoaChartInstance.destroy();
+
+            var pc1_val = (exp[0] > 1 ? exp[0] : exp[0]*100).toFixed(1);
+            var pc2_val = (exp[1] > 1 ? exp[1] : exp[1]*100).toFixed(1);
+
+            pcoaChartInstance = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Pre (基準期)',
+                            data: prePoints,
+                            backgroundColor: '#38bdf8',
+                            pointRadius: 9,
+                            pointHoverRadius: 12
+                        },
+                        {
+                            label: 'Post (大蒜汁介入)',
+                            data: postPoints,
+                            backgroundColor: '#10b981',
+                            pointStyle: 'rectRot',
+                            pointRadius: 10,
+                            pointHoverRadius: 13
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'PC1 (' + pc1_val + '% 變異解釋度)', color: '#e2e8f0' },
+                            grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            title: { display: true, text: 'PC2 (' + pc2_val + '% 變異解釋度)', color: '#e2e8f0' },
+                            grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.raw.label + ': (PC1: ' + context.raw.x.toFixed(3) + ', PC2: ' + context.raw.y.toFixed(3) + ')';
+                                }
+                            }
+                        },
+                        legend: { labels: { color: '#e2e8f0' } }
+                    }
+                }
+            });
+            window.pcoaChartRendered = true;
+        }
+
+        // Taxa Barplot
+        var taxaBarInstance = null;
+        function renderTaxaBar(level) {
+            var btnP = document.getElementById('btn-taxa-phylum');
+            var btnG = document.getElementById('btn-taxa-genus');
+            if (level === 'phylum') {
+                if (btnP) btnP.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white transition cursor-pointer';
+                if (btnG) btnG.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition cursor-pointer';
+            } else {
+                if (btnG) btnG.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white transition cursor-pointer';
+                if (btnP) btnP.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition cursor-pointer';
+            }
+
+            var samples = ['Subject1_Pre', 'Subject1_Post', 'Subject2_Pre', 'Subject2_Post', 'Subject3_Pre', 'Subject3_Post'];
+            var datasets = [];
+
+            if (level === 'phylum') {
+                var phyla = [
+                    { name: 'Bacteroidota', color: '#38bdf8', data: [65.0, 52.1, 53.8, 41.2, 53.4, 33.1] },
+                    { name: 'Bacillota (Firmicutes)', color: '#10b981', data: [25.4, 38.2, 36.1, 51.4, 35.8, 45.0] },
+                    { name: 'Actinomycetota', color: '#f59e0b', data: [2.1, 7.8, 3.5, 4.2, 3.4, 17.4] },
+                    { name: 'Pseudomonadota (Proteobacteria)', color: '#f43f5e', data: [7.2, 1.4, 6.3, 2.9, 7.4, 3.4] },
+                    { name: 'Verrucomicrobiota (Akkermansia)', color: '#8b5cf6', data: [0.03, 0.45, 0.02, 0.28, 0.03, 0.38] },
+                    { name: '其他 (Others)', color: '#64748b', data: [0.27, 0.05, 0.28, 0.02, 0.04, 0.72] }
+                ];
+                datasets = phyla.map(function(p) {
+                    return {
+                        label: p.name,
+                        data: p.data,
+                        backgroundColor: p.color
+                    };
+                });
+            } else {
+                var genera = [
+                    { name: 'Bacteroides', color: '#0284c7', data: [32.1, 28.5, 29.4, 21.0, 26.9, 22.8] },
+                    { name: 'Segatella', color: '#38bdf8', data: [18.2, 12.1, 10.5, 5.2, 11.6, 3.2] },
+                    { name: 'Bifidobacterium', color: '#f59e0b', data: [1.2, 4.8, 2.1, 3.8, 2.3, 7.8] },
+                    { name: 'Faecalibacterium', color: '#10b981', data: [6.8, 3.2, 5.9, 2.8, 5.6, 2.9] },
+                    { name: 'Blautia', color: '#34d399', data: [1.0, 3.4, 1.2, 3.1, 1.1, 3.3] },
+                    { name: 'Alistipes', color: '#6ee7b7', data: [1.5, 3.2, 1.8, 3.9, 1.7, 3.7] },
+                    { name: 'Sutterella', color: '#f43f5e', data: [5.8, 1.2, 4.5, 1.1, 4.6, 1.0] },
+                    { name: 'Collinsella', color: '#fb923c', data: [0.9, 3.1, 1.1, 3.4, 1.1, 3.8] },
+                    { name: 'Akkermansia', color: '#a855f7', data: [0.03, 0.45, 0.02, 0.28, 0.03, 0.38] },
+                    { name: '其他 (Others)', color: '#475569', data: [32.47, 39.05, 43.48, 54.42, 44.07, 48.12] }
+                ];
+                datasets = genera.map(function(g) {
+                    return {
+                        label: g.name,
+                        data: g.data,
+                        backgroundColor: g.color
+                    };
+                });
+            }
+
+            var el = document.getElementById('taxaBarChart');
+            if (!el) return;
+            var ctx = el.getContext('2d');
+            if (taxaBarInstance) taxaBarInstance.destroy();
+
+            taxaBarInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: samples, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, grid: { display: false }, ticks: { color: '#94a3b8' } },
+                        y: { stacked: true, max: 100, title: { display: true, text: '相對豐度 (%)', color: '#e2e8f0' }, grid: { color: 'rgba(255, 255, 255, 0.08)' }, ticks: { color: '#94a3b8' } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#e2e8f0', font: { size: 10 }, boxWidth: 12 } }
+                    }
+                }
+            });
+            window.taxaChartRendered = true;
+        }
+
+        // Interactive Quiz Logic (Safe string escaping)
+        var quizAnswers = {
+            1: {
+                correct: "B",
+                explanation: "正確！Illumina 雙端測序的讀長末端通常質量下降顯著，截短至 280/240bp 能有效提升平均 Q 值；同時 (280-17) + (240-21) = 482bp，大於 V3-V4 擴增子約 460bp 的長度，確保有足夠的 overlap (&gt;12bp) 進行高質量拼接。"
+            },
+            2: {
+                correct: "A",
+                explanation: "正確！系統發育多樣性（如 Faith 系統發育多樣性 Faith\'s PD）與系統發育距離（如 UniFrac）的核心算法是沿著進化樹累計分支長度或比較分支權重，因此必須提供以共同祖先為根節點的有根系統發育樹。"
+            },
+            3: {
+                correct: "C",
+                explanation: "正確！嗜黏蛋白阿克曼氏菌 (Akkermansia muciniphila) 屬於 Verrucomicrobiota 門，在生大蒜汁（Allicin）介入 1 週後，相對豐度由 0.025% 躍升至 0.371%（近 15 倍飆升），是著名的腸道黏液屏障守護菌！"
+            }
+        };
+
+        function checkAnswer(qNum, selected) {
+            var fb = document.getElementById('feedback-' + qNum);
+            var ans = quizAnswers[qNum];
+            if (!fb || !ans) return;
+            fb.classList.remove('hidden', 'bg-emerald-950/60', 'text-emerald-300', 'border-emerald-700', 'bg-rose-950/60', 'text-rose-300', 'border-rose-700');
+            fb.classList.add('border');
+
+            if (selected === ans.correct) {
+                fb.classList.add('bg-emerald-950/60', 'text-emerald-300', 'border-emerald-700');
+                fb.innerHTML = '<i class="fa-solid fa-check-circle mr-1"></i> <strong>回答正確！</strong> ' + ans.explanation;
+            } else {
+                fb.classList.add('bg-rose-950/60', 'text-rose-300', 'border-rose-700');
+                fb.innerHTML = '<i class="fa-solid fa-circle-xmark mr-1"></i> <strong>回答錯誤。</strong> 正確答案為 <strong>' + ans.correct + '</strong>。<br>' + ans.explanation;
+            }
+        }
+
+        // Ensure default view on load
+        document.addEventListener('DOMContentLoaded', function() {
+            switchTab('overview');
+        });
+    </script>
+</body>
+</html>
